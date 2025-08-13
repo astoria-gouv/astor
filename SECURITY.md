@@ -9,7 +9,7 @@ Security is a top priority for us. We are committed to maintaining the security 
 If you discover a security vulnerability, we encourage you to report it to us privately so we can take appropriate action before making the details publicly known. Public disclosure of vulnerabilities can put users at risk, so we ask that vulnerabilities be disclosed responsibly.
 
 ### How to report a vulnerability:
-- Send an email to our dedicated security team at **security@liamvonastoria.net**.
+- Send an email to our dedicated security team at **security@info.gouv.aa**.
 - Include a detailed description of the vulnerability, including steps to reproduce it if applicable.
 - We also appreciate information on any potential patches or mitigation strategies you may have.
 
@@ -53,6 +53,6 @@ We follow the principle of least privilege for all contributors and collaborator
 
 We take security seriously, and we are committed to continuously improving the security posture of our project. By following these guidelines, we hope to ensure that this project remains secure, trustworthy, and reliable for all users and contributors.
 
-If you have any questions or concerns regarding this Security Policy, please do not hesitate to contact us at **security@skygenesisenterprise.com**.
+If you have any questions or concerns regarding this Security Policy, please do not hesitate to contact us at **security@info.gouv.aa**.
 
 Thank you for helping us keep our project secure.
