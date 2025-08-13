@@ -35,8 +35,8 @@ The system is built with a modular architecture:
 
 ```bash
 # Clone the repository
-git clone <repository-url>
-cd astor-currency
+git clone https://github.com/astoria-gouv/astor
+cd astor
 
 # Build the project
 cargo build --release
