@@ -87,3 +87,38 @@ pub struct ConfigModel {
     pub updated_at: DateTime<Utc>,
     pub updated_by: Uuid,
 }
+
+/// Database model for currency conversion records
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+pub struct ConversionRecord {
+    pub id: Uuid,
+    pub account_id: Uuid,
+    pub from_currency: String,
+    pub to_currency: String,
+    pub original_amount: i64,
+    pub converted_amount: i64,
+    pub exchange_rate: f64,
+    pub fees: i64,
+    pub slippage: f64,
+    pub provider: String,
+    pub status: String,
+    pub created_at: DateTime<Utc>,
+    pub completed_at: Option<DateTime<Utc>>,
+    pub metadata: serde_json::Value,
+}
+
+/// Database model for exchange rates
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+pub struct ExchangeRateModel {
+    pub id: Uuid,
+    pub from_currency: String,
+    pub to_currency: String,
+    pub rate: f64,
+    pub bid: f64,
+    pub ask: f64,
+    pub volatility: f64,
+    pub daily_change: f64,
+    pub source: String,
+    pub timestamp: DateTime<Utc>,
+    pub created_at: DateTime<Utc>,
+}
