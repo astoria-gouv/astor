@@ -33,7 +33,7 @@ The system is built with a modular architecture:
 
 ### Installation
 
-\`\`\`bash
+```bash
 # Clone the repository
 git clone <repository-url>
 cd astor-currency
@@ -43,11 +43,11 @@ cargo build --release
 
 # Run tests
 cargo test
-\`\`\`
+```
 
 ### Basic Usage
 
-\`\`\`bash
+```bash
 # Initialize the system
 cargo run -- init
 
@@ -65,7 +65,7 @@ cargo run -- verify-ledger
 
 # Show system statistics
 cargo run -- stats
-\`\`\`
+```
 
 ## Security Features
 
@@ -110,7 +110,7 @@ The `conversion.rs` module provides placeholders for:
 
 Run the comprehensive test suite:
 
-\`\`\`bash
+```bash
 # Run all tests
 cargo test
 
@@ -119,7 +119,7 @@ cargo test -- --nocapture
 
 # Run specific test
 cargo test test_currency_issuance
-\`\`\`
+```
 
 ## Contributing
 
