@@ -1,0 +1,33 @@
+# RBAC configuration
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: astor-service-account
+  namespace: astor-currency
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: astor-role
+  namespace: astor-currency
+rules:
+- apiGroups: [""]
+  resources: ["configmaps", "secrets"]
+  verbs: ["get", "list", "watch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: astor-role-binding
+  namespace: astor-currency
+subjects:
+- kind: ServiceAccount
+  name: astor-service-account
+  namespace: astor-currency
+roleRef:
+  kind: Role
+  name: astor-role
+  apiGroup: rbac.authorization.k8s.io

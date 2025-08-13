@@ -1,0 +1,108 @@
+# Base configuration for all environments
+
+server:
+  host: "0.0.0.0"
+  port: 8080
+  request_timeout: 30
+  max_request_size: 1048576
+  keep_alive_timeout: 75
+  graceful_shutdown_timeout: 30
+  enable_compression: true
+
+database:
+  max_connections: 20
+  min_connections: 5
+  acquire_timeout: 30
+  idle_timeout: 600
+  max_lifetime: 3600
+  test_before_acquire: true
+  migration_timeout: 300
+  slow_query_threshold: 1000
+  connection_retry_attempts: 3
+  connection_retry_delay: 1000
+
+security:
+  jwt_expiration: 86400  # 24 hours
+  refresh_token_expiration: 604800  # 7 days
+  bcrypt_cost: 12
+  max_login_attempts: 5
+  lockout_duration: 900  # 15 minutes
+  session_timeout: 3600  # 1 hour
+  require_mfa: false
+  api_key_length: 32
+  password_policy:
+    min_length: 8
+    require_uppercase: true
+    require_lowercase: true
+    require_numbers: true
+    require_special_chars: true
+    max_age_days: 90
+    prevent_reuse_count: 5
+  rate_limiting:
+    requests_per_minute: 100
+    burst_size: 20
+    window_size: 60
+    cleanup_interval: 300
+    whitelist_ips:
+      - "127.0.0.1"
+
+redis:
+  max_connections: 10
+  connection_timeout: 5
+  command_timeout: 5
+  retry_attempts: 3
+  retry_delay: 1000
+  key_prefix: "astor:"
+  default_ttl: 3600
+
+logging:
+  level: "info"
+  format: "Json"
+  output: "Stdout"
+  max_file_size: 104857600  # 100MB
+  max_files: 10
+  structured_logging: true
+  include_caller: false
+  include_thread_id: false
+
+monitoring:
+  metrics:
+    enabled: true
+    endpoint: "/metrics"
+    collection_interval: 60
+    retention_days: 30
+  tracing:
+    enabled: false
+    sample_rate: 0.1
+    service_name: "astor-currency"
+  health_check:
+    enabled: true
+    endpoint: "/health"
+    interval: 30
+    timeout: 5
+    checks:
+      - "database"
+      - "redis"
+  alerts:
+    enabled: false
+    thresholds:
+      error_rate: 0.05
+      response_time_p99: 1000
+      memory_usage: 0.8
+      cpu_usage: 0.8
+      disk_usage: 0.9
+
+feature_flags:
+  enabled: false
+  provider: "Local"
+  refresh_interval: 300
+
+compliance:
+  audit_logging: true
+  data_retention_days: 2555  # 7 years
+  gdpr_compliance: true
+  pci_compliance: false
+  sox_compliance: false
+  encryption_at_rest: true
+  encryption_in_transit: true
+  audit_trail_integrity: true

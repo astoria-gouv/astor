@@ -1,0 +1,64 @@
+[package]
+name = "astor-currency"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1.0", features = ["v4", "serde"] }
+sha2 = "0.10"
+ed25519-dalek = { version = "2.0", features = ["serde"] }
+rand = "0.8"
+clap = { version = "4.0", features = ["derive"] }
+tokio = { version = "1.0", features = ["full"] }
+thiserror = "1.0"
+sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "postgres", "chrono", "uuid", "json"] }
+axum = { version = "0.7", features = ["json", "tokio"] }
+tower = "0.4"
+tower-http = { version = "0.5", features = ["cors", "trace"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+config = "0.14"
+anyhow = "1.0"
+bcrypt = "0.15"
+jsonwebtoken = "9.0"
+redis = { version = "0.24", features = ["tokio-comp"] }
+
+# Smart contract engine dependencies
+wasmtime = "15.0"
+wasmer = "4.2"
+parity-wasm = "0.45"
+
+# Cross-chain interoperability
+libp2p = { version = "0.53", features = ["tcp", "mdns", "noise", "yamux", "gossipsub", "kad"] }
+ethereum-types = "0.14"
+web3 = "0.19"
+secp256k1 = { version = "0.28", features = ["recovery"] }
+
+# Machine learning and analytics
+candle-core = "0.3"
+candle-nn = "0.3"
+ndarray = "0.15"
+linfa = "0.7"
+linfa-linear = "0.7"
+plotters = "0.3"
+
+# Enhanced cryptography
+ring = "0.17"
+aes-gcm = "0.10"
+x25519-dalek = "2.0"
+hkdf = "0.12"
+
+# Monitoring and metrics
+prometheus = "0.13"
+opentelemetry = "0.21"
+opentelemetry-jaeger = "0.20"
+
+# Additional utilities
+regex = "1.10"
+base64 = "0.21"
+hex = "0.4"
+futures = "0.3"
+async-trait = "0.1"

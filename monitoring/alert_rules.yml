@@ -1,0 +1,49 @@
+# Prometheus alert rules
+
+groups:
+  - name: astor_alerts
+    rules:
+      - alert: HighErrorRate
+        expr: rate(astor_http_requests_total{status=~"5.."}[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value }} errors per second"
+      
+      - alert: HighResponseTime
+        expr: histogram_quantile(0.99, rate(astor_http_request_duration_seconds_bucket[5m])) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High response time detected"
+          description: "99th percentile response time is {{ $value }} seconds"
+      
+      - alert: DatabaseConnectionsHigh
+        expr: astor_database_connections > 45
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High database connection usage"
+          description: "Database connections: {{ $value }}/50"
+      
+      - alert: SecurityViolations
+        expr: increase(astor_security_violations_total[1h]) > 10
+        for: 0m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Multiple security violations detected"
+          description: "{{ $value }} security violations in the last hour"
+      
+      - alert: ServiceDown
+        expr: up{job="astor-api"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Astor API service is down"
+          description: "The Astor API service has been down for more than 1 minute"

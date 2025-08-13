@@ -1,0 +1,9 @@
+# Kubernetes namespace for Astor Currency System
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: astor-currency
+  labels:
+    name: astor-currency
+    environment: production

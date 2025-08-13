@@ -1,0 +1,37 @@
+# Kubernetes service for Astor API
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: astor-api-service
+  namespace: astor-currency
+  labels:
+    app: astor-api
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 8080
+    protocol: TCP
+    name: http
+  selector:
+    app: astor-api
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: astor-api-headless
+  namespace: astor-currency
+  labels:
+    app: astor-api
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+  - port: 8080
+    targetPort: 8080
+    protocol: TCP
+    name: http
+  selector:
+    app: astor-api

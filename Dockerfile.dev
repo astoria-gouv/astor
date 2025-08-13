@@ -1,0 +1,34 @@
+# Development Docker image with hot reloading
+
+FROM rust:1.75-slim
+
+# Install system dependencies and development tools
+RUN apt-get update && apt-get install -y \
+    pkg-config \
+    libssl-dev \
+    libpq-dev \
+    ca-certificates \
+    curl \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install cargo-watch for hot reloading
+RUN cargo install cargo-watch
+
+# Create app user
+RUN useradd -m -u 1001 astor
+
+# Set working directory
+WORKDIR /app
+
+# Change ownership
+RUN chown -R astor:astor /app
+
+# Switch to app user
+USER astor
+
+# Expose port
+EXPOSE 8080
+
+# Default command for development
+CMD ["cargo", "watch", "-x", "run"]

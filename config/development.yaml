@@ -1,0 +1,34 @@
+# Development environment configuration
+
+server:
+  cors_origins:
+    - "http://localhost:3000"
+    - "http://localhost:8080"
+
+database:
+  url: "postgresql://postgres:password@localhost:5432/astor_dev"
+
+redis:
+  url: "redis://localhost:6379/0"
+
+security:
+  jwt_secret: "development_jwt_secret_change_in_production_32_chars"
+  encryption_key: "development_encryption_key_32_chars_long"
+  require_mfa: false
+
+logging:
+  level: "debug"
+  format: "Pretty"
+  include_caller: true
+
+monitoring:
+  tracing:
+    enabled: true
+    sample_rate: 1.0
+
+feature_flags:
+  enabled: true
+  flags:
+    new_transaction_flow: true
+    enhanced_security: false
+    beta_features: true

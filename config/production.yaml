@@ -1,0 +1,57 @@
+# Production environment configuration
+
+server:
+  cors_origins: []  # Set via environment variables
+  tls:
+    cert_path: "/etc/ssl/certs/astor.crt"
+    key_path: "/etc/ssl/private/astor.key"
+    require_client_cert: false
+
+database:
+  max_connections: 50
+  min_connections: 10
+  slow_query_threshold: 500
+
+security:
+  require_mfa: true
+  bcrypt_cost: 14
+  max_login_attempts: 3
+  lockout_duration: 1800  # 30 minutes
+  rate_limiting:
+    requests_per_minute: 60
+    burst_size: 10
+
+logging:
+  level: "warn"
+  format: "Json"
+  output: "Both"
+  file_path: "/var/log/astor/app.log"
+  structured_logging: true
+
+monitoring:
+  metrics:
+    enabled: true
+    collection_interval: 30
+    retention_days: 90
+  tracing:
+    enabled: true
+    sample_rate: 0.01
+  alerts:
+    enabled: true
+    thresholds:
+      error_rate: 0.01
+      response_time_p99: 500
+      memory_usage: 0.7
+      cpu_usage: 0.7
+
+compliance:
+  pci_compliance: true
+  sox_compliance: true
+  encryption_at_rest: true
+  encryption_in_transit: true
+
+feature_flags:
+  enabled: true
+  provider:
+    Custom:
+      endpoint: "https://flags.astor.com/api"

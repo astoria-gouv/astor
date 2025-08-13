@@ -1,0 +1,47 @@
+# ConfigMap for application configuration
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: astor-config
+  namespace: astor-currency
+data:
+  config.yaml: |
+    server:
+      host: "0.0.0.0"
+      port: 8080
+      request_timeout: 30
+      max_request_size: 1048576
+      enable_compression: true
+    
+    database:
+      max_connections: 50
+      min_connections: 10
+      acquire_timeout: 30
+      idle_timeout: 600
+    
+    security:
+      jwt_expiration: 86400
+      refresh_token_expiration: 604800
+      bcrypt_cost: 14
+      max_login_attempts: 3
+      lockout_duration: 1800
+      require_mfa: true
+    
+    logging:
+      level: "warn"
+      format: "Json"
+      structured_logging: true
+    
+    monitoring:
+      metrics:
+        enabled: true
+        endpoint: "/metrics"
+      health_check:
+        enabled: true
+        endpoint: "/health"
+    
+    compliance:
+      audit_logging: true
+      encryption_at_rest: true
+      encryption_in_transit: true
