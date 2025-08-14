@@ -1,0 +1,143 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: astor-currency-authority
+  namespace: astor-currency
+  labels:
+    app: astor-currency-authority
+    component: certificate-authority
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: astor-currency-authority
+  template:
+    metadata:
+      labels:
+        app: astor-currency-authority
+        component: certificate-authority
+    spec:
+      serviceAccountName: astor-currency-sa
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+      - name: currency-authority
+        image: astor-currency:latest
+        imagePullPolicy: Always
+        command: ["./target/release/astor-currency"]
+        args: ["authority-server", "--config", "/etc/astor/config.yaml"]
+        ports:
+        - containerPort: 8080
+          name: api
+          protocol: TCP
+        - containerPort: 8443
+          name: ca-api
+          protocol: TCP
+        - containerPort: 9090
+          name: metrics
+          protocol: TCP
+        env:
+        - name: RUST_LOG
+          value: "info"
+        - name: ASTOR_MODE
+          value: "authority"
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: astor-secrets
+              key: database-url
+        - name: CA_ROOT_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ca-secrets
+              key: root-private-key
+        - name: CA_ROOT_CERT
+          valueFrom:
+            secretKeyRef:
+              name: ca-secrets
+              key: root-certificate
+        volumeMounts:
+        - name: config
+          mountPath: /etc/astor
+          readOnly: true
+        - name: ca-storage
+          mountPath: /var/lib/astor/ca
+        - name: temp
+          mountPath: /tmp
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+      volumes:
+      - name: config
+        configMap:
+          name: astor-config
+      - name: ca-storage
+        persistentVolumeClaim:
+          claimName: astor-ca-storage
+      - name: temp
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: astor-currency-authority
+  namespace: astor-currency
+  labels:
+    app: astor-currency-authority
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8080
+    targetPort: 8080
+    protocol: TCP
+    name: api
+  - port: 8443
+    targetPort: 8443
+    protocol: TCP
+    name: ca-api
+  - port: 9090
+    targetPort: 9090
+    protocol: TCP
+    name: metrics
+  selector:
+    app: astor-currency-authority
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: astor-ca-storage
+  namespace: astor-currency
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: fast-ssd

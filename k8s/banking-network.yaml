@@ -1,0 +1,126 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: astor-banking-network
+  namespace: astor-currency
+  labels:
+    app: astor-banking-network
+    component: banking-gateway
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: astor-banking-network
+  template:
+    metadata:
+      labels:
+        app: astor-banking-network
+        component: banking-gateway
+    spec:
+      serviceAccountName: astor-currency-sa
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+      - name: banking-network
+        image: astor-currency:latest
+        imagePullPolicy: Always
+        command: ["./target/release/astor-currency"]
+        args: ["banking-network", "--config", "/etc/astor/config.yaml"]
+        ports:
+        - containerPort: 8081
+          name: banking-api
+          protocol: TCP
+        - containerPort: 8082
+          name: settlement
+          protocol: TCP
+        - containerPort: 9091
+          name: metrics
+          protocol: TCP
+        env:
+        - name: RUST_LOG
+          value: "info"
+        - name: ASTOR_MODE
+          value: "banking-network"
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: astor-secrets
+              key: database-url
+        - name: BANKING_NETWORK_KEY
+          valueFrom:
+            secretKeyRef:
+              name: banking-secrets
+              key: network-private-key
+        volumeMounts:
+        - name: config
+          mountPath: /etc/astor
+          readOnly: true
+        - name: banking-storage
+          mountPath: /var/lib/astor/banking
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "200m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8081
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8081
+          initialDelaySeconds: 5
+          periodSeconds: 5
+      volumes:
+      - name: config
+        configMap:
+          name: astor-config
+      - name: banking-storage
+        persistentVolumeClaim:
+          claimName: astor-banking-storage
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: astor-banking-network
+  namespace: astor-currency
+  labels:
+    app: astor-banking-network
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 8081
+    targetPort: 8081
+    protocol: TCP
+    name: banking-api
+  - port: 8082
+    targetPort: 8082
+    protocol: TCP
+    name: settlement
+  selector:
+    app: astor-banking-network
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: astor-banking-storage
+  namespace: astor-currency
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+  storageClassName: fast-ssd

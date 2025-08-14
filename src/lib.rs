@@ -24,6 +24,7 @@ pub mod interoperability;
 pub mod analytics;
 pub mod banking_network;
 pub mod cli;
+pub mod certificate_authority;
 
 pub use admin::AdminManager;
 pub use ledger::Ledger;
@@ -39,6 +40,11 @@ pub use payment_processing::PaymentProcessor;
 pub use regulatory::RegulatoryCompliance;
 pub use banking_network::{BankingNetwork, RegisteredBank, BankStatus};
 pub use cli::{CentralBankCli, CliHandler};
+pub use certificate_authority::{
+    AstorCertificateAuthority, CertificateAuthorityConfig,
+    Certificate, CertificateType, CertificateStatus,
+    CertificateSigningRequest, CsrProcessor,
+};
 
 /// Core Astor system that orchestrates all components
 pub struct AstorSystem {
@@ -52,6 +58,7 @@ pub struct AstorSystem {
     pub payment_processor: PaymentProcessor,
     pub regulatory_compliance: RegulatoryCompliance,
     pub banking_network: BankingNetwork,
+    pub certificate_authority: AstorCertificateAuthority,
 }
 
 impl AstorSystem {
@@ -81,6 +88,10 @@ impl AstorSystem {
 
         admin_manager.add_admin("root".to_string(), root_admin_keypair.public_key())?;
 
+        let ca_config = certificate_authority::ca_core::CaConfig::default();
+        let ca_keypair = KeyPair::generate(); // Separate keypair for CA
+        let certificate_authority = AstorCertificateAuthority::new(ca_keypair, ca_config)?;
+
         monitoring.start().await?;
 
         Ok(Self {
@@ -94,6 +105,7 @@ impl AstorSystem {
             payment_processor,
             regulatory_compliance,
             banking_network,
+            certificate_authority,
         })
     }
 
@@ -124,6 +136,10 @@ impl AstorSystem {
 
         admin_manager.add_admin("root".to_string(), root_admin_keypair.public_key())?;
 
+        let ca_config = certificate_authority::ca_core::CaConfig::default();
+        let ca_keypair = KeyPair::generate(); // Separate keypair for CA
+        let certificate_authority = AstorCertificateAuthority::new(ca_keypair, ca_config)?;
+
         monitoring.start().await?;
 
         let system = Self {
@@ -137,6 +153,7 @@ impl AstorSystem {
             payment_processor,
             regulatory_compliance,
             banking_network,
+            certificate_authority,
         };
 
         let network_manager = NetworkManager::new(network_config).await?;
@@ -250,5 +267,34 @@ impl AstorSystem {
     /// Get banking network statistics
     pub async fn get_banking_network_stats(&self) -> banking_network::NetworkStats {
         self.banking_network.get_network_stats().await
+    }
+
+    /// Issue certificate for currency operations
+    pub async fn issue_certificate(
+        &mut self,
+        csr: CertificateSigningRequest,
+        certificate_type: CertificateType,
+        validity_days: u32,
+    ) -> Result<Certificate, AstorError> {
+        self.certificate_authority.issue_certificate(csr, certificate_type, validity_days).await
+    }
+
+    /// Revoke certificate
+    pub async fn revoke_certificate(
+        &mut self,
+        serial_number: &str,
+        reason: certificate_authority::crl::RevocationReason,
+    ) -> Result<(), AstorError> {
+        self.certificate_authority.revoke_certificate(serial_number, reason).await
+    }
+
+    /// Get root CA certificate for distribution
+    pub fn get_root_ca_certificate(&self) -> Certificate {
+        self.certificate_authority.get_root_certificate()
+    }
+
+    /// Validate certificate chain
+    pub fn validate_certificate(&self, certificate: &Certificate) -> Result<bool, AstorError> {
+        self.certificate_authority.validate_certificate_chain(certificate)
     }
 }

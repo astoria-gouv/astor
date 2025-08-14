@@ -1,0 +1,61 @@
+server:
+  host: "0.0.0.0"
+  port: 8080
+  ca_port: 8443
+  workers: 4
+  max_connections: 1000
+  request_timeout: 30
+  keep_alive: 75
+
+certificate_authority:
+  enabled: true
+  root_ca_path: "/var/lib/astor/ca/root-ca.pem"
+  root_key_path: "/var/lib/astor/ca/root-key.pem"
+  intermediate_ca_path: "/var/lib/astor/ca/intermediate-ca.pem"
+  intermediate_key_path: "/var/lib/astor/ca/intermediate-key.pem"
+  certificate_validity_days: 365
+  crl_update_interval: 3600
+  ocsp_enabled: true
+  ocsp_port: 8444
+
+currency_issuance:
+  enabled: true
+  max_daily_issuance: 1000000000  # 1 billion Astor per day
+  reserve_ratio: 0.1  # 10% reserve requirement
+  interest_rate: 0.025  # 2.5% base interest rate
+  inflation_target: 0.02  # 2% annual inflation target
+
+banking_network:
+  enabled: true
+  max_connected_banks: 1000
+  settlement_interval: 300  # 5 minutes
+  settlement_threshold: 10000  # Minimum amount for settlement
+  network_fees:
+    transaction_fee: 0.001  # 0.1% transaction fee
+    settlement_fee: 0.0005  # 0.05% settlement fee
+    monthly_connection_fee: 1000  # 1000 Astor per month
+
+security:
+  tls_enabled: true
+  cert_path: "/etc/ssl/certs/astor.crt"
+  key_path: "/etc/ssl/private/astor.key"
+  cipher_suites:
+    - "TLS_AES_256_GCM_SHA384"
+    - "TLS_CHACHA20_POLY1305_SHA256"
+    - "TLS_AES_128_GCM_SHA256"
+  min_tls_version: "1.3"
+  
+monitoring:
+  metrics_enabled: true
+  metrics_port: 9090
+  health_check_interval: 30
+  log_level: "info"
+  audit_log_enabled: true
+  audit_log_path: "/var/log/astor/audit.log"
+
+database:
+  max_connections: 20
+  min_connections: 5
+  connection_timeout: 30
+  idle_timeout: 600
+  max_lifetime: 3600
