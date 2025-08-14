@@ -1,0 +1,33 @@
+# Fichiers de compilation Rust
+/target/
+
+# Fichiers de configuration d'éditeur
+**/*.swp
+**/*.swo
+.idea/
+.vscode/
+
+# Fichiers de logs
+*.log
+
+# Fichiers de dépendances
+Cargo.lock
+
+# Fichiers temporaires
+*.tmp
+*.bak
+
+# Fichiers de test
+/coverage/
+
+# Ignorer les fichiers générés par Rustup
+.rustup/
+
+# Ignorer les fichiers générés par Clippy
+clippy.toml
+
+# Ignorer les fichiers générés par Rustfmt
+rustfmt.toml
+
+# Ignorer les fichiers générés par ccache
+.ccache/
