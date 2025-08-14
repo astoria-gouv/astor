@@ -18,17 +18,22 @@ pub struct InputValidator {
 
 impl InputValidator {
     pub fn new() -> Result<Self, AstorError> {
-        let email_regex = Regex::new(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$")
-            .map_err(|e| AstorError::ValidationError(format!("Failed to compile email regex: {}", e)))?;
-        
-        let phone_regex = Regex::new(r"^\+?[1-9]\d{1,14}$")
-            .map_err(|e| AstorError::ValidationError(format!("Failed to compile phone regex: {}", e)))?;
-        
-        let alphanumeric_regex = Regex::new(r"^[a-zA-Z0-9_-]+$")
-            .map_err(|e| AstorError::ValidationError(format!("Failed to compile alphanumeric regex: {}", e)))?;
-        
-        let currency_code_regex = Regex::new(r"^[A-Z]{3}$")
-            .map_err(|e| AstorError::ValidationError(format!("Failed to compile currency code regex: {}", e)))?;
+        let email_regex =
+            Regex::new(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$").map_err(|e| {
+                AstorError::ValidationError(format!("Failed to compile email regex: {}", e))
+            })?;
+
+        let phone_regex = Regex::new(r"^\+?[1-9]\d{1,14}$").map_err(|e| {
+            AstorError::ValidationError(format!("Failed to compile phone regex: {}", e))
+        })?;
+
+        let alphanumeric_regex = Regex::new(r"^[a-zA-Z0-9_-]+$").map_err(|e| {
+            AstorError::ValidationError(format!("Failed to compile alphanumeric regex: {}", e))
+        })?;
+
+        let currency_code_regex = Regex::new(r"^[A-Z]{3}$").map_err(|e| {
+            AstorError::ValidationError(format!("Failed to compile currency code regex: {}", e))
+        })?;
 
         let mut banned_patterns = HashSet::new();
         // Common XSS patterns
@@ -68,7 +73,9 @@ impl InputValidator {
     /// Validate email format
     pub fn validate_email(&self, email: &str) -> Result<(), AstorError> {
         if email.is_empty() {
-            return Err(AstorError::ValidationError("Email cannot be empty".to_string()));
+            return Err(AstorError::ValidationError(
+                "Email cannot be empty".to_string(),
+            ));
         }
 
         if email.len() > 254 {
@@ -76,7 +83,9 @@ impl InputValidator {
         }
 
         if !self.email_regex.is_match(email) {
-            return Err(AstorError::ValidationError("Invalid email format".to_string()));
+            return Err(AstorError::ValidationError(
+                "Invalid email format".to_string(),
+            ));
         }
 
         self.check_for_malicious_patterns(email)?;
@@ -86,11 +95,15 @@ impl InputValidator {
     /// Validate phone number format
     pub fn validate_phone(&self, phone: &str) -> Result<(), AstorError> {
         if phone.is_empty() {
-            return Err(AstorError::ValidationError("Phone number cannot be empty".to_string()));
+            return Err(AstorError::ValidationError(
+                "Phone number cannot be empty".to_string(),
+            ));
         }
 
         if !self.phone_regex.is_match(phone) {
-            return Err(AstorError::ValidationError("Invalid phone number format".to_string()));
+            return Err(AstorError::ValidationError(
+                "Invalid phone number format".to_string(),
+            ));
         }
 
         Ok(())
@@ -99,11 +112,16 @@ impl InputValidator {
     /// Validate currency amount
     pub fn validate_amount(&self, amount: i64) -> Result<(), AstorError> {
         if amount < 0 {
-            return Err(AstorError::ValidationError("Amount cannot be negative".to_string()));
+            return Err(AstorError::ValidationError(
+                "Amount cannot be negative".to_string(),
+            ));
         }
 
-        if amount > 1_000_000_000_000 { // 1 trillion limit
-            return Err(AstorError::ValidationError("Amount exceeds maximum limit".to_string()));
+        if amount > 1_000_000_000_000 {
+            // 1 trillion limit
+            return Err(AstorError::ValidationError(
+                "Amount exceeds maximum limit".to_string(),
+            ));
         }
 
         Ok(())
@@ -112,7 +130,9 @@ impl InputValidator {
     /// Validate currency code (ISO 4217 format)
     pub fn validate_currency_code(&self, code: &str) -> Result<(), AstorError> {
         if !self.currency_code_regex.is_match(code) {
-            return Err(AstorError::ValidationError("Invalid currency code format".to_string()));
+            return Err(AstorError::ValidationError(
+                "Invalid currency code format".to_string(),
+            ));
         }
 
         Ok(())
@@ -121,15 +141,21 @@ impl InputValidator {
     /// Validate account ID format
     pub fn validate_account_id(&self, account_id: &str) -> Result<(), AstorError> {
         if account_id.is_empty() {
-            return Err(AstorError::ValidationError("Account ID cannot be empty".to_string()));
+            return Err(AstorError::ValidationError(
+                "Account ID cannot be empty".to_string(),
+            ));
         }
 
         if account_id.len() > 50 {
-            return Err(AstorError::ValidationError("Account ID too long".to_string()));
+            return Err(AstorError::ValidationError(
+                "Account ID too long".to_string(),
+            ));
         }
 
         if !self.alphanumeric_regex.is_match(account_id) {
-            return Err(AstorError::ValidationError("Account ID contains invalid characters".to_string()));
+            return Err(AstorError::ValidationError(
+                "Account ID contains invalid characters".to_string(),
+            ));
         }
 
         Ok(())
@@ -144,12 +170,13 @@ impl InputValidator {
     /// Check for malicious patterns in input
     pub fn check_for_malicious_patterns(&self, input: &str) -> Result<(), AstorError> {
         let input_lower = input.to_lowercase();
-        
+
         for pattern in &self.banned_patterns {
             if input_lower.contains(&pattern.to_lowercase()) {
-                return Err(AstorError::SecurityViolation(
-                    format!("Potentially malicious pattern detected: {}", pattern)
-                ));
+                return Err(AstorError::SecurityViolation(format!(
+                    "Potentially malicious pattern detected: {}",
+                    pattern
+                )));
             }
         }
 
@@ -159,7 +186,9 @@ impl InputValidator {
     /// Validate password strength
     pub fn validate_password(&self, password: &str) -> Result<(), AstorError> {
         if password.len() < 8 {
-            return Err(AstorError::ValidationError("Password must be at least 8 characters".to_string()));
+            return Err(AstorError::ValidationError(
+                "Password must be at least 8 characters".to_string(),
+            ));
         }
 
         if password.len() > 128 {
@@ -169,11 +198,14 @@ impl InputValidator {
         let has_uppercase = password.chars().any(|c| c.is_uppercase());
         let has_lowercase = password.chars().any(|c| c.is_lowercase());
         let has_digit = password.chars().any(|c| c.is_numeric());
-        let has_special = password.chars().any(|c| "!@#$%^&*()_+-=[]{}|;:,.<>?".contains(c));
+        let has_special = password
+            .chars()
+            .any(|c| "!@#$%^&*()_+-=[]{}|;:,.<>?".contains(c));
 
         if !has_uppercase || !has_lowercase || !has_digit || !has_special {
             return Err(AstorError::ValidationError(
-                "Password must contain uppercase, lowercase, digit, and special character".to_string()
+                "Password must contain uppercase, lowercase, digit, and special character"
+                    .to_string(),
             ));
         }
 
@@ -202,7 +234,7 @@ impl SecurityValidator {
         allowed_currencies.insert("AST".to_string()); // Astor currency
 
         Self {
-            max_transaction_amount: 1_000_000_00, // $1M in cents
+            max_transaction_amount: 1_000_000_00,        // $1M in cents
             max_daily_transaction_amount: 10_000_000_00, // $10M in cents
             allowed_currencies,
         }
@@ -211,20 +243,24 @@ impl SecurityValidator {
     /// Validate transaction amount limits
     pub fn validate_transaction_limits(&self, amount: i64) -> Result<(), AstorError> {
         if amount > self.max_transaction_amount {
-            return Err(AstorError::ValidationError(
-                format!("Transaction amount {} exceeds maximum limit {}", 
-                    amount, self.max_transaction_amount)
-            ));
+            return Err(AstorError::ValidationError(format!(
+                "Transaction amount {} exceeds maximum limit {}",
+                amount, self.max_transaction_amount
+            )));
         }
 
         Ok(())
     }
 
     /// Validate daily transaction limits
-    pub fn validate_daily_limits(&self, daily_total: i64, new_amount: i64) -> Result<(), AstorError> {
+    pub fn validate_daily_limits(
+        &self,
+        daily_total: i64,
+        new_amount: i64,
+    ) -> Result<(), AstorError> {
         if daily_total + new_amount > self.max_daily_transaction_amount {
             return Err(AstorError::ValidationError(
-                "Daily transaction limit exceeded".to_string()
+                "Daily transaction limit exceeded".to_string(),
             ));
         }
 
@@ -234,9 +270,10 @@ impl SecurityValidator {
     /// Validate currency is supported
     pub fn validate_currency_support(&self, currency: &str) -> Result<(), AstorError> {
         if !self.allowed_currencies.contains(currency) {
-            return Err(AstorError::ValidationError(
-                format!("Currency {} is not supported", currency)
-            ));
+            return Err(AstorError::ValidationError(format!(
+                "Currency {} is not supported",
+                currency
+            )));
         }
 
         Ok(())
@@ -246,7 +283,7 @@ impl SecurityValidator {
     pub fn validate_sufficient_balance(&self, balance: i64, amount: i64) -> Result<(), AstorError> {
         if balance < amount {
             return Err(AstorError::ValidationError(
-                "Insufficient balance for transaction".to_string()
+                "Insufficient balance for transaction".to_string(),
             ));
         }
 
@@ -254,10 +291,14 @@ impl SecurityValidator {
     }
 
     /// Validate transaction frequency (anti-spam)
-    pub fn validate_transaction_frequency(&self, recent_transactions: u32, max_per_minute: u32) -> Result<(), AstorError> {
+    pub fn validate_transaction_frequency(
+        &self,
+        recent_transactions: u32,
+        max_per_minute: u32,
+    ) -> Result<(), AstorError> {
         if recent_transactions >= max_per_minute {
             return Err(AstorError::ValidationError(
-                "Transaction frequency limit exceeded".to_string()
+                "Transaction frequency limit exceeded".to_string(),
             ));
         }
 
@@ -353,7 +394,7 @@ mod tests {
     #[test]
     fn test_email_validation() {
         let validator = InputValidator::new().unwrap();
-        
+
         assert!(validator.validate_email("test@example.com").is_ok());
         assert!(validator.validate_email("invalid-email").is_err());
         assert!(validator.validate_email("").is_err());
@@ -362,7 +403,7 @@ mod tests {
     #[test]
     fn test_amount_validation() {
         let validator = InputValidator::new().unwrap();
-        
+
         assert!(validator.validate_amount(100).is_ok());
         assert!(validator.validate_amount(-100).is_err());
         assert!(validator.validate_amount(1_000_000_000_001).is_err());
@@ -371,16 +412,22 @@ mod tests {
     #[test]
     fn test_malicious_pattern_detection() {
         let validator = InputValidator::new().unwrap();
-        
-        assert!(validator.check_for_malicious_patterns("normal text").is_ok());
-        assert!(validator.check_for_malicious_patterns("<script>alert('xss')</script>").is_err());
-        assert!(validator.check_for_malicious_patterns("'; DROP TABLE users; --").is_err());
+
+        assert!(validator
+            .check_for_malicious_patterns("normal text")
+            .is_ok());
+        assert!(validator
+            .check_for_malicious_patterns("<script>alert('xss')</script>")
+            .is_err());
+        assert!(validator
+            .check_for_malicious_patterns("'; DROP TABLE users; --")
+            .is_err());
     }
 
     #[test]
     fn test_password_validation() {
         let validator = InputValidator::new().unwrap();
-        
+
         assert!(validator.validate_password("StrongP@ss1").is_ok());
         assert!(validator.validate_password("weak").is_err());
         assert!(validator.validate_password("NoSpecialChar1").is_err());

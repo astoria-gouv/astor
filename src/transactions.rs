@@ -1,7 +1,7 @@
 //! Transaction management and validation module
 
-use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::errors::AstorError;
@@ -67,7 +67,7 @@ impl TransactionManager {
         amount: u64,
     ) -> Result<String, AstorError> {
         let tx_id = Uuid::new_v4().to_string();
-        
+
         let transaction_type = TransactionType::Issuance {
             issuer: issuer.to_string(),
             recipient: recipient.to_string(),
@@ -94,7 +94,7 @@ impl TransactionManager {
         amount: u64,
     ) -> Result<String, AstorError> {
         let tx_id = Uuid::new_v4().to_string();
-        
+
         let transaction_type = TransactionType::Transfer {
             from: from.to_string(),
             to: to.to_string(),
@@ -119,7 +119,9 @@ impl TransactionManager {
             tx.status = TransactionStatus::Confirmed;
             Ok(())
         } else {
-            Err(AstorError::TransactionValidationFailed("Transaction not found".to_string()))
+            Err(AstorError::TransactionValidationFailed(
+                "Transaction not found".to_string(),
+            ))
         }
     }
 
@@ -129,7 +131,9 @@ impl TransactionManager {
             tx.status = TransactionStatus::Failed(reason);
             Ok(())
         } else {
-            Err(AstorError::TransactionValidationFailed("Transaction not found".to_string()))
+            Err(AstorError::TransactionValidationFailed(
+                "Transaction not found".to_string(),
+            ))
         }
     }
 

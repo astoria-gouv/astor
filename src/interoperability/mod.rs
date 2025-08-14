@@ -6,9 +6,9 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use uuid::Uuid;
 
-pub mod bridges;
-pub mod protocols;
-pub mod validators;
+// pub mod bridges;
+// pub mod protocols;
+// pub mod validators;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CrossChainBridge {
@@ -72,7 +72,7 @@ impl InteroperabilityManager {
         validators: Vec<String>,
     ) -> AstorResult<Uuid> {
         let bridge_id = Uuid::new_v4();
-        
+
         let bridge = CrossChainBridge {
             id: bridge_id,
             name,
@@ -84,7 +84,7 @@ impl InteroperabilityManager {
             fee_rate: 0.001,
             active: true,
         };
-        
+
         self.bridges.insert(bridge_id, bridge);
         Ok(bridge_id)
     }
@@ -97,11 +97,15 @@ impl InteroperabilityManager {
         amount: u64,
         source_tx_hash: String,
     ) -> AstorResult<Uuid> {
-        let bridge = self.bridges.get(&bridge_id)
+        let bridge = self
+            .bridges
+            .get(&bridge_id)
             .ok_or_else(|| crate::errors::AstorError::NotFound("Bridge not found".to_string()))?;
 
         if !bridge.active {
-            return Err(crate::errors::AstorError::InvalidInput("Bridge is inactive".to_string()));
+            return Err(crate::errors::AstorError::InvalidInput(
+                "Bridge is inactive".to_string(),
+            ));
         }
 
         let transaction_id = Uuid::new_v4();
@@ -119,45 +123,55 @@ impl InteroperabilityManager {
             completed_at: None,
         };
 
-        self.pending_transactions.insert(transaction_id, transaction);
-        
+        self.pending_transactions
+            .insert(transaction_id, transaction);
+
         // Start validation process
-        self.validators.validate_cross_chain_transaction(transaction_id).await?;
-        
+        self.validators
+            .validate_cross_chain_transaction(transaction_id)
+            .await?;
+
         Ok(transaction_id)
     }
 
-    pub async fn process_confirmations(&mut self, tx_id: Uuid, confirmations: u32) -> AstorResult<()> {
+    pub async fn process_confirmations(
+        &mut self,
+        tx_id: Uuid,
+        confirmations: u32,
+    ) -> AstorResult<()> {
         if let Some(transaction) = self.pending_transactions.get_mut(&tx_id) {
             transaction.confirmations = confirmations;
-            
+
             let bridge = self.bridges.get(&transaction.bridge_id).unwrap();
-            
+
             if confirmations >= bridge.min_confirmations {
                 transaction.status = TransactionStatus::Confirmed;
                 self.execute_cross_chain_transfer(tx_id).await?;
             }
         }
-        
+
         Ok(())
     }
 
     async fn execute_cross_chain_transfer(&mut self, tx_id: Uuid) -> AstorResult<()> {
         if let Some(transaction) = self.pending_transactions.get_mut(&tx_id) {
             transaction.status = TransactionStatus::Processing;
-            
+
             // Execute the actual cross-chain transfer
             let target_tx_hash = self.submit_to_target_chain(transaction).await?;
-            
+
             transaction.target_tx_hash = Some(target_tx_hash);
             transaction.status = TransactionStatus::Completed;
             transaction.completed_at = Some(chrono::Utc::now());
         }
-        
+
         Ok(())
     }
 
-    async fn submit_to_target_chain(&self, transaction: &CrossChainTransaction) -> AstorResult<String> {
+    async fn submit_to_target_chain(
+        &self,
+        transaction: &CrossChainTransaction,
+    ) -> AstorResult<String> {
         // In a real implementation, this would interact with the target blockchain
         // For now, we'll simulate the transaction submission
         let tx_hash = format!("0x{:x}", rand::random::<u64>());

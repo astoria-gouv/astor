@@ -1,10 +1,10 @@
 //! Ledger repository for database operations
 
-use sqlx::PgPool;
-use uuid::Uuid;
-use chrono::Utc;
 use crate::database::models::LedgerEntryModel;
 use crate::errors::AstorError;
+use chrono::Utc;
+use sqlx::PgPool;
+use uuid::Uuid;
 
 pub struct LedgerRepository {
     pool: PgPool,
@@ -31,12 +31,13 @@ impl LedgerRepository {
         let now = Utc::now();
 
         // Get next block height
-        let block_height: i64 = sqlx::query_scalar(
-            "SELECT COALESCE(MAX(block_height), 0) + 1 FROM ledger_entries"
-        )
-        .fetch_one(&self.pool)
-        .await
-        .map_err(|e| AstorError::DatabaseError(format!("Failed to get block height: {}", e)))?;
+        let block_height: i64 =
+            sqlx::query_scalar("SELECT COALESCE(MAX(block_height), 0) + 1 FROM ledger_entries")
+                .fetch_one(&self.pool)
+                .await
+                .map_err(|e| {
+                    AstorError::DatabaseError(format!("Failed to get block height: {}", e))
+                })?;
 
         let entry = sqlx::query_as::<_, LedgerEntryModel>(
             r#"
@@ -89,7 +90,7 @@ impl LedgerRepository {
     /// Get last ledger entry
     pub async fn get_last_entry(&self) -> Result<Option<LedgerEntryModel>, AstorError> {
         let entry = sqlx::query_as::<_, LedgerEntryModel>(
-            "SELECT * FROM ledger_entries ORDER BY block_height DESC LIMIT 1"
+            "SELECT * FROM ledger_entries ORDER BY block_height DESC LIMIT 1",
         )
         .fetch_optional(&self.pool)
         .await
@@ -101,11 +102,13 @@ impl LedgerRepository {
     /// Verify ledger integrity
     pub async fn verify_integrity(&self) -> Result<bool, AstorError> {
         let entries = sqlx::query_as::<_, LedgerEntryModel>(
-            "SELECT * FROM ledger_entries ORDER BY block_height ASC"
+            "SELECT * FROM ledger_entries ORDER BY block_height ASC",
         )
         .fetch_all(&self.pool)
         .await
-        .map_err(|e| AstorError::DatabaseError(format!("Failed to get entries for verification: {}", e)))?;
+        .map_err(|e| {
+            AstorError::DatabaseError(format!("Failed to get entries for verification: {}", e))
+        })?;
 
         if entries.is_empty() {
             return Ok(true);

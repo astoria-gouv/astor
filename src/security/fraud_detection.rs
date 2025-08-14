@@ -1,8 +1,8 @@
 //! Fraud detection and risk assessment
 
+use chrono::{DateTime, Duration, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use chrono::{DateTime, Utc, Duration};
 use uuid::Uuid;
 
 use crate::errors::AstorError;
@@ -44,14 +44,33 @@ impl RiskScore {
 /// Risk factors that contribute to overall risk score
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum RiskFactor {
-    UnusualTransactionAmount { amount: i64, typical_range: (i64, i64) },
-    UnusualTransactionFrequency { count: u32, time_window: Duration },
-    NewIpAddress { ip: String },
-    UnusualTimeOfDay { hour: u32 },
-    GeographicAnomaly { country: String, typical_countries: Vec<String> },
-    VelocityCheck { transactions_per_hour: u32 },
-    AccountAge { days: i64 },
-    SuspiciousPattern { pattern: String },
+    UnusualTransactionAmount {
+        amount: i64,
+        typical_range: (i64, i64),
+    },
+    UnusualTransactionFrequency {
+        count: u32,
+        time_window: Duration,
+    },
+    NewIpAddress {
+        ip: String,
+    },
+    UnusualTimeOfDay {
+        hour: u32,
+    },
+    GeographicAnomaly {
+        country: String,
+        typical_countries: Vec<String>,
+    },
+    VelocityCheck {
+        transactions_per_hour: u32,
+    },
+    AccountAge {
+        days: i64,
+    },
+    SuspiciousPattern {
+        pattern: String,
+    },
 }
 
 /// Transaction pattern for analysis
@@ -103,7 +122,9 @@ impl FraudDetector {
         // Check IP reputation
         let ip_risk = self.check_ip_reputation(ip_address);
         if ip_risk > 0.5 {
-            risk_factors.push(RiskFactor::NewIpAddress { ip: ip_address.to_string() });
+            risk_factors.push(RiskFactor::NewIpAddress {
+                ip: ip_address.to_string(),
+            });
             total_risk += ip_risk * 0.3;
         }
 
@@ -112,15 +133,17 @@ impl FraudDetector {
             // Check account age
             let account_age = Utc::now() - profile.account_created;
             if account_age.num_days() < 7 {
-                risk_factors.push(RiskFactor::AccountAge { days: account_age.num_days() });
+                risk_factors.push(RiskFactor::AccountAge {
+                    days: account_age.num_days(),
+                });
                 total_risk += 0.2;
             }
 
             // Check transaction velocity
             let recent_transactions = self.get_recent_transactions(user_id, Duration::hours(1));
             if recent_transactions.len() > 10 {
-                risk_factors.push(RiskFactor::VelocityCheck { 
-                    transactions_per_hour: recent_transactions.len() as u32 
+                risk_factors.push(RiskFactor::VelocityCheck {
+                    transactions_per_hour: recent_transactions.len() as u32,
                 });
                 total_risk += 0.4;
             }
@@ -138,8 +161,8 @@ impl FraudDetector {
 
         // Check for suspicious patterns
         if self.detect_suspicious_patterns(user_id, operation).await? {
-            risk_factors.push(RiskFactor::SuspiciousPattern { 
-                pattern: "Rapid sequential transactions".to_string() 
+            risk_factors.push(RiskFactor::SuspiciousPattern {
+                pattern: "Rapid sequential transactions".to_string(),
             });
             total_risk += 0.5;
         }
@@ -156,7 +179,8 @@ impl FraudDetector {
             .push(pattern.clone());
 
         // Update user profile
-        let profile = self.user_profiles
+        let profile = self
+            .user_profiles
             .entry(pattern.user_id.clone())
             .or_insert_with(|| UserProfile {
                 typical_transaction_amounts: Vec::new(),
@@ -167,7 +191,9 @@ impl FraudDetector {
             });
 
         profile.typical_transaction_amounts.push(pattern.amount);
-        profile.typical_transaction_times.push(pattern.timestamp.hour());
+        profile
+            .typical_transaction_times
+            .push(pattern.timestamp.hour());
         if !profile.typical_ips.contains(&pattern.ip_address) {
             profile.typical_ips.push(pattern.ip_address.clone());
         }
@@ -186,9 +212,13 @@ impl FraudDetector {
     }
 
     /// Get recent transactions for user
-    fn get_recent_transactions(&self, user_id: &str, duration: Duration) -> Vec<&TransactionPattern> {
+    fn get_recent_transactions(
+        &self,
+        user_id: &str,
+        duration: Duration,
+    ) -> Vec<&TransactionPattern> {
         let cutoff = Utc::now() - duration;
-        
+
         self.transaction_history
             .get(user_id)
             .map(|transactions| {
@@ -201,7 +231,11 @@ impl FraudDetector {
     }
 
     /// Detect suspicious patterns
-    async fn detect_suspicious_patterns(&self, user_id: &str, operation: &str) -> Result<bool, AstorError> {
+    async fn detect_suspicious_patterns(
+        &self,
+        user_id: &str,
+        operation: &str,
+    ) -> Result<bool, AstorError> {
         if let Some(transactions) = self.transaction_history.get(user_id) {
             let recent = transactions
                 .iter()
@@ -231,7 +265,8 @@ impl FraudDetector {
     pub fn update_ip_reputation(&mut self, ip_address: &str, reputation_delta: f64) {
         let current = self.ip_reputation.get(ip_address).unwrap_or(&0.5);
         let new_reputation = (current + reputation_delta).clamp(0.0, 1.0);
-        self.ip_reputation.insert(ip_address.to_string(), new_reputation);
+        self.ip_reputation
+            .insert(ip_address.to_string(), new_reputation);
     }
 }
 

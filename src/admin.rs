@@ -1,12 +1,12 @@
 //! Administrator management module
 
-use std::collections::HashMap;
+use chrono::{DateTime, Utc};
 use ed25519_dalek::PublicKey;
 use serde::{Deserialize, Serialize};
-use chrono::{DateTime, Utc};
+use std::collections::HashMap;
 
-use crate::security::{Role, Signature};
 use crate::errors::AstorError;
+use crate::security::{Role, Signature};
 
 /// Administrator information
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -34,13 +34,19 @@ impl AdminManager {
     /// Add a new administrator
     pub fn add_admin(&mut self, admin_id: String, public_key: PublicKey) -> Result<(), AstorError> {
         if self.admins.contains_key(&admin_id) {
-            return Err(AstorError::Unauthorized("Administrator already exists".to_string()));
+            return Err(AstorError::Unauthorized(
+                "Administrator already exists".to_string(),
+            ));
         }
 
         let admin = Administrator {
             id: admin_id.clone(),
             public_key,
-            role: if self.admins.is_empty() { Role::RootAdmin } else { Role::BankAdmin },
+            role: if self.admins.is_empty() {
+                Role::RootAdmin
+            } else {
+                Role::BankAdmin
+            },
             created_at: Utc::now(),
             is_active: true,
         };
@@ -52,13 +58,17 @@ impl AdminManager {
     /// Remove an administrator
     pub fn remove_admin(&mut self, admin_id: &str, requester_id: &str) -> Result<(), AstorError> {
         let requester = self.get_admin(requester_id)?;
-        
+
         if !requester.role.can_manage_admins() {
-            return Err(AstorError::Unauthorized("Insufficient privileges to remove admin".to_string()));
+            return Err(AstorError::Unauthorized(
+                "Insufficient privileges to remove admin".to_string(),
+            ));
         }
 
         if admin_id == "root" {
-            return Err(AstorError::Unauthorized("Cannot remove root administrator".to_string()));
+            return Err(AstorError::Unauthorized(
+                "Cannot remove root administrator".to_string(),
+            ));
         }
 
         self.admins.remove(admin_id);
@@ -80,9 +90,11 @@ impl AdminManager {
         signature: &Signature,
     ) -> Result<(), AstorError> {
         let admin = self.get_admin(admin_id)?;
-        
+
         if !admin.is_active {
-            return Err(AstorError::Unauthorized("Administrator is inactive".to_string()));
+            return Err(AstorError::Unauthorized(
+                "Administrator is inactive".to_string(),
+            ));
         }
 
         signature.verify(&admin.public_key, action)?;

@@ -67,24 +67,24 @@ impl NetworkSync {
         if *is_syncing {
             return Ok(()); // Already syncing
         }
-        
+
         *is_syncing = true;
         drop(is_syncing);
-        
+
         // Start sync process
         self.perform_initial_sync().await?;
-        
+
         Ok(())
     }
 
     pub async fn stop_sync(&self) -> Result<(), AstorError> {
         let mut is_syncing = self.is_syncing.write().await;
         *is_syncing = false;
-        
+
         // Clear pending requests
         let mut pending = self.pending_requests.write().await;
         pending.clear();
-        
+
         Ok(())
     }
 
@@ -92,23 +92,23 @@ impl NetworkSync {
         // Get network height from peers
         let network_height = self.get_network_height().await?;
         let local_height = *self.local_height.read().await;
-        
+
         if network_height <= local_height {
             // Already synced
             let mut is_syncing = self.is_syncing.write().await;
             *is_syncing = false;
             return Ok(());
         }
-        
+
         // Update network height
         {
             let mut net_height = self.network_height.write().await;
             *net_height = network_height;
         }
-        
+
         // Start syncing blocks
         self.sync_blocks(local_height, network_height).await?;
-        
+
         Ok(())
     }
 
@@ -121,10 +121,10 @@ impl NetworkSync {
     async fn sync_blocks(&self, from_height: u64, to_height: u64) -> Result<(), AstorError> {
         let batch_size = 100;
         let mut current_height = from_height;
-        
+
         while current_height < to_height {
             let end_height = std::cmp::min(current_height + batch_size, to_height);
-            
+
             // Request blocks from peers
             let request = SyncRequest {
                 request_id: uuid::Uuid::new_v4().to_string(),
@@ -133,26 +133,26 @@ impl NetworkSync {
                 to_height: Some(end_height),
                 limit: Some(batch_size as usize),
             };
-            
+
             self.send_sync_request(request).await?;
-            
+
             // Update progress
             let progress = (current_height - from_height) as f64 / (to_height - from_height) as f64;
             {
                 let mut sync_progress = self.sync_progress.write().await;
                 *sync_progress = progress;
             }
-            
+
             current_height = end_height;
         }
-        
+
         // Mark sync as complete
         let mut is_syncing = self.is_syncing.write().await;
         *is_syncing = false;
-        
+
         let mut sync_progress = self.sync_progress.write().await;
         *sync_progress = 1.0;
-        
+
         Ok(())
     }
 
@@ -162,11 +162,11 @@ impl NetworkSync {
             let mut pending = self.pending_requests.write().await;
             pending.insert(request.request_id.clone(), request.clone());
         }
-        
+
         // Send request to best peer
         // Implementation would send actual network message
         tracing::info!("Sending sync request: {:?}", request);
-        
+
         Ok(())
     }
 
@@ -176,7 +176,7 @@ impl NetworkSync {
             let mut pending = self.pending_requests.write().await;
             pending.remove(&response.request_id);
         }
-        
+
         // Process response data
         match response.response_type {
             SyncResponseType::Blocks => {
@@ -195,7 +195,7 @@ impl NetworkSync {
                 tracing::error!("Sync request failed: {}", response.request_id);
             }
         }
-        
+
         Ok(())
     }
 
@@ -272,12 +272,12 @@ impl SyncManager {
     async fn start_sync_loop(&self) -> Result<(), AstorError> {
         let network_sync = self.network_sync.clone();
         let sync_interval = self.sync_interval;
-        
+
         tokio::spawn(async move {
             let mut interval = tokio::time::interval(sync_interval);
             loop {
                 interval.tick().await;
-                
+
                 // Check if sync is needed
                 let status = network_sync.get_sync_status().await;
                 if !status.is_syncing && status.local_height < status.network_height {
@@ -287,7 +287,7 @@ impl SyncManager {
                 }
             }
         });
-        
+
         Ok(())
     }
 

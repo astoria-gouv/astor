@@ -1,19 +1,19 @@
 //! Banking network infrastructure for commercial bank integration
 
-pub mod bank_registry;
-pub mod network_protocol;
+// pub mod bank_registry;
+// pub mod network_protocol;
 pub mod settlement;
-pub mod oversight;
+// pub mod oversight;
 
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use chrono::{DateTime, Utc};
-use tokio::sync::RwLock;
 use std::sync::Arc;
+use tokio::sync::RwLock;
 
-use crate::errors::AstorError;
-use crate::commercial_banking::CommercialBank;
 use crate::central_bank::CentralBank;
+use crate::commercial_banking::CommercialBank;
+use crate::errors::AstorError;
 
 /// Banking network coordinator
 pub struct BankingNetwork {
@@ -84,7 +84,7 @@ impl BankingNetwork {
         services_offered: Vec<BankingService>,
     ) -> Result<String, AstorError> {
         let bank_id = uuid::Uuid::new_v4().to_string();
-        
+
         let registered_bank = RegisteredBank {
             bank_id: bank_id.clone(),
             bank_name,
@@ -99,10 +99,12 @@ impl BankingNetwork {
 
         let mut banks = self.registered_banks.write().await;
         banks.insert(bank_id.clone(), registered_bank);
-        
+
         // Trigger compliance review
-        self.oversight_system.initiate_compliance_review(&bank_id).await?;
-        
+        self.oversight_system
+            .initiate_compliance_review(&bank_id)
+            .await?;
+
         Ok(bank_id)
     }
 
@@ -113,7 +115,10 @@ impl BankingNetwork {
             bank.status = BankStatus::Active;
             Ok(())
         } else {
-            Err(AstorError::BankingNetworkError(format!("Bank {} not found", bank_id)))
+            Err(AstorError::BankingNetworkError(format!(
+                "Bank {} not found",
+                bank_id
+            )))
         }
     }
 
@@ -125,20 +130,31 @@ impl BankingNetwork {
         amount: u64,
         reference: String,
     ) -> Result<String, AstorError> {
-        self.settlement_engine.process_settlement(from_bank, to_bank, amount, reference).await
+        self.settlement_engine
+            .process_settlement(from_bank, to_bank, amount, reference)
+            .await
     }
 
     /// Get network statistics
     pub async fn get_network_stats(&self) -> NetworkStats {
         let banks = self.registered_banks.read().await;
-        let active_banks = banks.values().filter(|b| matches!(b.status, BankStatus::Active)).count();
+        let active_banks = banks
+            .values()
+            .filter(|b| matches!(b.status, BankStatus::Active))
+            .count();
         let total_banks = banks.len();
-        
+
         NetworkStats {
             total_registered_banks: total_banks,
             active_banks,
-            pending_approvals: banks.values().filter(|b| matches!(b.status, BankStatus::UnderReview)).count(),
-            suspended_banks: banks.values().filter(|b| matches!(b.status, BankStatus::Suspended)).count(),
+            pending_approvals: banks
+                .values()
+                .filter(|b| matches!(b.status, BankStatus::UnderReview))
+                .count(),
+            suspended_banks: banks
+                .values()
+                .filter(|b| matches!(b.status, BankStatus::Suspended))
+                .count(),
         }
     }
 }

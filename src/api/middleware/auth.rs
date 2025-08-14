@@ -6,7 +6,7 @@ use axum::{
     middleware::Next,
     response::Response,
 };
-use jsonwebtoken::{decode, DecodingKey, Validation, Algorithm};
+use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -14,10 +14,10 @@ use crate::api::AppState;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
-    pub sub: Uuid,      // Subject (user ID)
-    pub role: String,   // User role
-    pub exp: i64,       // Expiration time
-    pub iat: i64,       // Issued at
+    pub sub: Uuid,    // Subject (user ID)
+    pub role: String, // User role
+    pub exp: i64,     // Expiration time
+    pub iat: i64,     // Issued at
 }
 
 /// JWT authentication middleware
@@ -37,7 +37,7 @@ pub async fn auth_middleware(
     }
 
     let token = &auth_header[7..];
-    
+
     let claims = decode::<Claims>(
         token,
         &DecodingKey::from_secret(state.config.security.jwt_secret.as_ref()),
@@ -53,10 +53,7 @@ pub async fn auth_middleware(
 }
 
 /// Admin-only middleware
-pub async fn admin_middleware(
-    request: Request,
-    next: Next,
-) -> Result<Response, StatusCode> {
+pub async fn admin_middleware(request: Request, next: Next) -> Result<Response, StatusCode> {
     let claims = request
         .extensions()
         .get::<Claims>()

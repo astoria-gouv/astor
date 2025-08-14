@@ -4,22 +4,22 @@ use aes_gcm::{
     aead::{Aead, AeadCore, KeyInit, OsRng},
     Aes256Gcm, Key, Nonce,
 };
+use base64::{engine::general_purpose, Engine as _};
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use base64::{Engine as _, engine::general_purpose};
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use uuid::Uuid;
-use chrono::{DateTime, Utc};
 
 use crate::errors::AstorError;
 
 /// Encrypted data container
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EncryptedData {
-    pub data: String,           // Base64 encoded encrypted data
-    pub nonce: String,          // Base64 encoded nonce
-    pub key_id: String,         // Key identifier used for encryption
-    pub algorithm: String,      // Encryption algorithm used
+    pub data: String,      // Base64 encoded encrypted data
+    pub nonce: String,     // Base64 encoded nonce
+    pub key_id: String,    // Key identifier used for encryption
+    pub algorithm: String, // Encryption algorithm used
     pub created_at: DateTime<Utc>,
 }
 
@@ -105,7 +105,7 @@ impl EncryptionManager {
         // Generate initial encryption key
         let initial_key = EncryptionKey::new("AES-256-GCM".to_string());
         let active_key_id = initial_key.id.clone();
-        
+
         let mut keys = HashMap::new();
         keys.insert(active_key_id.clone(), initial_key);
 
@@ -118,25 +118,35 @@ impl EncryptionManager {
 
     /// Encrypt data using active key
     pub fn encrypt(&self, plaintext: &[u8]) -> Result<EncryptedData, AstorError> {
-        let active_key = self.keys
-            .get(&self.active_key_id)
-            .ok_or(AstorError::CryptographicError("Active key not found".to_string()))?;
+        let active_key =
+            self.keys
+                .get(&self.active_key_id)
+                .ok_or(AstorError::CryptographicError(
+                    "Active key not found".to_string(),
+                ))?;
 
         match active_key.algorithm.as_str() {
             "AES-256-GCM" => self.encrypt_aes_gcm(plaintext, active_key),
-            _ => Err(AstorError::CryptographicError("Unsupported algorithm".to_string())),
+            _ => Err(AstorError::CryptographicError(
+                "Unsupported algorithm".to_string(),
+            )),
         }
     }
 
     /// Decrypt data using specified key
     pub fn decrypt(&self, encrypted_data: &EncryptedData) -> Result<Vec<u8>, AstorError> {
-        let key = self.keys
+        let key = self
+            .keys
             .get(&encrypted_data.key_id)
-            .ok_or(AstorError::CryptographicError("Decryption key not found".to_string()))?;
+            .ok_or(AstorError::CryptographicError(
+                "Decryption key not found".to_string(),
+            ))?;
 
         match encrypted_data.algorithm.as_str() {
             "AES-256-GCM" => self.decrypt_aes_gcm(encrypted_data, key),
-            _ => Err(AstorError::CryptographicError("Unsupported algorithm".to_string())),
+            _ => Err(AstorError::CryptographicError(
+                "Unsupported algorithm".to_string(),
+            )),
         }
     }
 
@@ -193,7 +203,8 @@ impl EncryptionManager {
     /// Clean up old inactive keys (keep for 1 year for decryption)
     pub fn cleanup_old_keys(&mut self) {
         let cutoff = Utc::now() - chrono::Duration::days(365);
-        let keys_to_remove: Vec<String> = self.keys
+        let keys_to_remove: Vec<String> = self
+            .keys
             .iter()
             .filter(|(_, key)| !key.is_active && key.created_at < cutoff)
             .map(|(id, _)| id.clone())
@@ -205,11 +216,15 @@ impl EncryptionManager {
     }
 
     /// AES-256-GCM encryption implementation
-    fn encrypt_aes_gcm(&self, plaintext: &[u8], key: &EncryptionKey) -> Result<EncryptedData, AstorError> {
+    fn encrypt_aes_gcm(
+        &self,
+        plaintext: &[u8],
+        key: &EncryptionKey,
+    ) -> Result<EncryptedData, AstorError> {
         let cipher_key = Key::<Aes256Gcm>::from_slice(&key.key);
         let cipher = Aes256Gcm::new(cipher_key);
         let nonce = Aes256Gcm::generate_nonce(&mut OsRng);
-        
+
         let ciphertext = cipher
             .encrypt(&nonce, plaintext)
             .map_err(|e| AstorError::CryptographicError(format!("AES encryption error: {}", e)))?;
@@ -223,10 +238,14 @@ impl EncryptionManager {
     }
 
     /// AES-256-GCM decryption implementation
-    fn decrypt_aes_gcm(&self, encrypted_data: &EncryptedData, key: &EncryptionKey) -> Result<Vec<u8>, AstorError> {
+    fn decrypt_aes_gcm(
+        &self,
+        encrypted_data: &EncryptedData,
+        key: &EncryptionKey,
+    ) -> Result<Vec<u8>, AstorError> {
         let cipher_key = Key::<Aes256Gcm>::from_slice(&key.key);
         let cipher = Aes256Gcm::new(cipher_key);
-        
+
         let ciphertext = encrypted_data.get_encrypted_bytes()?;
         let nonce_bytes = encrypted_data.get_nonce_bytes()?;
         let nonce = Nonce::from_slice(&nonce_bytes);
@@ -249,26 +268,40 @@ pub struct EncryptionStats {
 /// Utility functions for common encryption tasks
 impl EncryptionManager {
     /// Encrypt sensitive configuration data
-    pub fn encrypt_config(&self, config_data: &serde_json::Value) -> Result<EncryptedData, AstorError> {
-        let json_string = serde_json::to_string(config_data)
-            .map_err(|e| AstorError::CryptographicError(format!("JSON serialization error: {}", e)))?;
+    pub fn encrypt_config(
+        &self,
+        config_data: &serde_json::Value,
+    ) -> Result<EncryptedData, AstorError> {
+        let json_string = serde_json::to_string(config_data).map_err(|e| {
+            AstorError::CryptographicError(format!("JSON serialization error: {}", e))
+        })?;
         self.encrypt_string(&json_string)
     }
 
     /// Decrypt configuration data
-    pub fn decrypt_config(&self, encrypted_data: &EncryptedData) -> Result<serde_json::Value, AstorError> {
+    pub fn decrypt_config(
+        &self,
+        encrypted_data: &EncryptedData,
+    ) -> Result<serde_json::Value, AstorError> {
         let json_string = self.decrypt_string(encrypted_data)?;
-        serde_json::from_str(&json_string)
-            .map_err(|e| AstorError::CryptographicError(format!("JSON deserialization error: {}", e)))
+        serde_json::from_str(&json_string).map_err(|e| {
+            AstorError::CryptographicError(format!("JSON deserialization error: {}", e))
+        })
     }
 
     /// Encrypt database connection strings
-    pub fn encrypt_connection_string(&self, connection_string: &str) -> Result<EncryptedData, AstorError> {
+    pub fn encrypt_connection_string(
+        &self,
+        connection_string: &str,
+    ) -> Result<EncryptedData, AstorError> {
         self.encrypt_string(connection_string)
     }
 
     /// Decrypt database connection strings
-    pub fn decrypt_connection_string(&self, encrypted_data: &EncryptedData) -> Result<String, AstorError> {
+    pub fn decrypt_connection_string(
+        &self,
+        encrypted_data: &EncryptedData,
+    ) -> Result<String, AstorError> {
         self.decrypt_string(encrypted_data)
     }
 
@@ -291,10 +324,10 @@ mod tests {
     fn test_encryption_decryption() {
         let manager = EncryptionManager::new("test_master_key").unwrap();
         let plaintext = "Hello, World!";
-        
+
         let encrypted = manager.encrypt_string(plaintext).unwrap();
         let decrypted = manager.decrypt_string(&encrypted).unwrap();
-        
+
         assert_eq!(plaintext, decrypted);
     }
 
@@ -302,12 +335,12 @@ mod tests {
     fn test_key_rotation() {
         let mut manager = EncryptionManager::new("test_master_key").unwrap();
         let original_key_id = manager.active_key_id.clone();
-        
+
         // Force key rotation by modifying the key creation time
         if let Some(key) = manager.keys.get_mut(&original_key_id) {
             key.created_at = Utc::now() - chrono::Duration::days(91);
         }
-        
+
         manager.rotate_keys().unwrap();
         assert_ne!(original_key_id, manager.active_key_id);
     }
@@ -319,10 +352,10 @@ mod tests {
             "database_url": "postgresql://user:pass@localhost/db",
             "api_key": "secret_key_123"
         });
-        
+
         let encrypted = manager.encrypt_config(&config).unwrap();
         let decrypted = manager.decrypt_config(&encrypted).unwrap();
-        
+
         assert_eq!(config, decrypted);
     }
 }

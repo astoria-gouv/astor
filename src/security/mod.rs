@@ -1,20 +1,20 @@
 //! Enhanced security module for production-grade protection
 
-pub mod crypto;
-pub mod auth;
-pub mod validation;
 pub mod audit;
-pub mod session;
+pub mod auth;
+pub mod crypto;
 pub mod encryption;
 pub mod fraud_detection;
+pub mod session;
+pub mod validation;
 
-pub use crypto::{KeyPair, Signature, hash_data};
-pub use auth::{Role, Permission, AccessControl};
-pub use validation::{InputValidator, SecurityValidator};
 pub use audit::{SecurityAuditLogger, SecurityEvent};
-pub use session::{SessionManager, Session};
-pub use encryption::{EncryptionManager, EncryptedData};
+pub use auth::{AccessControl, Permission, Role};
+pub use crypto::{hash_data, KeyPair, Signature};
+pub use encryption::{EncryptedData, EncryptionManager};
 pub use fraud_detection::{FraudDetector, RiskScore};
+pub use session::{Session, SessionManager};
+pub use validation::{InputValidator, SecurityValidator};
 
 use crate::errors::AstorError;
 
@@ -66,15 +66,22 @@ impl SecurityManager {
         user_agent: &str,
     ) -> Result<(), AstorError> {
         // Check for fraud patterns
-        let risk_score = self.fraud_detector.assess_risk(user_id, operation, ip_address).await?;
+        let risk_score = self
+            .fraud_detector
+            .assess_risk(user_id, operation, ip_address)
+            .await?;
         if risk_score.is_high_risk() {
-            self.audit_logger.log_security_event(SecurityEvent::HighRiskOperation {
-                user_id: user_id.to_string(),
-                operation: operation.to_string(),
-                risk_score: risk_score.score(),
-                ip_address: ip_address.to_string(),
-            }).await?;
-            return Err(AstorError::SecurityViolation("High risk operation detected".to_string()));
+            self.audit_logger
+                .log_security_event(SecurityEvent::HighRiskOperation {
+                    user_id: user_id.to_string(),
+                    operation: operation.to_string(),
+                    risk_score: risk_score.score(),
+                    ip_address: ip_address.to_string(),
+                })
+                .await?;
+            return Err(AstorError::SecurityViolation(
+                "High risk operation detected".to_string(),
+            ));
         }
 
         // Validate session

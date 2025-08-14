@@ -1,23 +1,23 @@
 //! Peer-to-peer networking module for distributed Astor currency operations
-//! 
+//!
 //! Provides node discovery, consensus mechanisms, and network synchronization
 
-pub mod node;
 pub mod consensus;
-pub mod protocol;
 pub mod discovery;
+pub mod node;
+pub mod protocol;
 pub mod sync;
 
-pub use node::{AstorNode, NodeConfig, NodeInfo, NodeStatus};
 pub use consensus::{ConsensusEngine, ConsensusMessage, ConsensusState};
-pub use protocol::{NetworkMessage, MessageType, ProtocolHandler};
 pub use discovery::{PeerDiscovery, PeerInfo};
+pub use node::{AstorNode, NodeConfig, NodeInfo, NodeStatus};
+pub use protocol::{MessageType, NetworkMessage, ProtocolHandler};
 pub use sync::{NetworkSync, SyncManager};
 
 use crate::errors::AstorError;
 use std::collections::HashMap;
-use tokio::sync::RwLock;
 use std::sync::Arc;
+use tokio::sync::RwLock;
 
 /// Network manager that coordinates all networking operations
 pub struct NetworkManager {
@@ -50,16 +50,16 @@ impl NetworkManager {
     pub async fn start(&self) -> Result<(), AstorError> {
         // Start node services
         self.node.write().await.start().await?;
-        
+
         // Start peer discovery
         self.discovery.write().await.start().await?;
-        
+
         // Start consensus engine
         self.consensus.write().await.start().await?;
-        
+
         // Start sync manager
         self.sync_manager.write().await.start().await?;
-        
+
         Ok(())
     }
 
@@ -77,7 +77,7 @@ impl NetworkManager {
         let node = self.node.read().await;
         let consensus = self.consensus.read().await;
         let discovery = self.discovery.read().await;
-        
+
         NetworkStatus {
             node_id: node.get_id().clone(),
             peer_count: discovery.get_peer_count(),

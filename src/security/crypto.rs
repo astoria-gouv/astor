@@ -1,12 +1,18 @@
 //! Enhanced cryptographic operations
 
+use aes_gcm::{
+    aead::{Aead, KeyInit},
+    Aes256Gcm, Key, Nonce,
+};
+use argon2::{
+    password_hash::{rand_core::RngCore, SaltString},
+    Argon2, PasswordHash, PasswordHasher, PasswordVerifier,
+};
+use base64::{engine::general_purpose, Engine as _};
 use ed25519_dalek::{Keypair, PublicKey, SecretKey, Signer, Verifier};
 use rand::rngs::OsRng;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256, Sha512};
-use argon2::{Argon2, PasswordHash, PasswordHasher, PasswordVerifier, password_hash::{rand_core::RngCore, SaltString}};
-use aes_gcm::{Aes256Gcm, Key, Nonce, aead::{Aead, KeyInit}};
-use base64::{Engine as _, engine::general_purpose};
 
 use crate::errors::AstorError;
 
@@ -24,8 +30,8 @@ impl KeyPair {
         let mut csprng = OsRng;
         let keypair = Keypair::generate(&mut csprng);
         let key_id = uuid::Uuid::new_v4().to_string();
-        
-        Self { 
+
+        Self {
             keypair,
             created_at: chrono::Utc::now(),
             key_id,
@@ -35,16 +41,21 @@ impl KeyPair {
     /// Create from existing secret key bytes with validation
     pub fn from_bytes(secret_bytes: &[u8]) -> Result<Self, AstorError> {
         if secret_bytes.len() != 32 {
-            return Err(AstorError::CryptographicError("Invalid key length".to_string()));
+            return Err(AstorError::CryptographicError(
+                "Invalid key length".to_string(),
+            ));
         }
 
         let secret_key = SecretKey::from_bytes(secret_bytes)
             .map_err(|e| AstorError::CryptographicError(e.to_string()))?;
         let public_key = PublicKey::from(&secret_key);
-        let keypair = Keypair { secret: secret_key, public: public_key };
+        let keypair = Keypair {
+            secret: secret_key,
+            public: public_key,
+        };
         let key_id = uuid::Uuid::new_v4().to_string();
-        
-        Ok(Self { 
+
+        Ok(Self {
             keypair,
             created_at: chrono::Utc::now(),
             key_id,
@@ -64,7 +75,7 @@ impl KeyPair {
     /// Sign a message with additional metadata
     pub fn sign(&self, message: &[u8]) -> Signature {
         let signature = self.keypair.sign(message);
-        Signature { 
+        Signature {
             signature,
             key_id: self.key_id.clone(),
             timestamp: chrono::Utc::now(),
@@ -112,9 +123,10 @@ impl Signature {
 
     /// Create from base64 string
     pub fn from_base64(data: &str, key_id: String) -> Result<Self, AstorError> {
-        let bytes = general_purpose::STANDARD.decode(data)
+        let bytes = general_purpose::STANDARD
+            .decode(data)
             .map_err(|_| AstorError::CryptographicError("Invalid base64".to_string()))?;
-        
+
         let signature = ed25519_dalek::Signature::from_bytes(&bytes)
             .map_err(|_| AstorError::CryptographicError("Invalid signature bytes".to_string()))?;
 
@@ -141,19 +153,23 @@ impl PasswordHasher {
     /// Hash password with salt
     pub fn hash_password(&self, password: &str) -> Result<String, AstorError> {
         let salt = SaltString::generate(&mut OsRng);
-        let password_hash = self.argon2
+        let password_hash = self
+            .argon2
             .hash_password(password.as_bytes(), &salt)
             .map_err(|e| AstorError::CryptographicError(e.to_string()))?;
-        
+
         Ok(password_hash.to_string())
     }
 
     /// Verify password against hash
     pub fn verify_password(&self, password: &str, hash: &str) -> Result<bool, AstorError> {
-        let parsed_hash = PasswordHash::new(hash)
-            .map_err(|e| AstorError::CryptographicError(e.to_string()))?;
-        
-        match self.argon2.verify_password(password.as_bytes(), &parsed_hash) {
+        let parsed_hash =
+            PasswordHash::new(hash).map_err(|e| AstorError::CryptographicError(e.to_string()))?;
+
+        match self
+            .argon2
+            .verify_password(password.as_bytes(), &parsed_hash)
+        {
             Ok(_) => Ok(true),
             Err(_) => Ok(false),
         }
@@ -202,7 +218,8 @@ impl TotpGenerator {
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap()
-                .as_secs() / 30
+                .as_secs()
+                / 30
         });
 
         let time_bytes = time.to_be_bytes();
@@ -210,7 +227,7 @@ impl TotpGenerator {
         hasher.update(&self.secret);
         hasher.update(&time_bytes);
         let hash = hasher.finalize();
-        
+
         let offset = (hash[hash.len() - 1] & 0xf) as usize;
         let code = u32::from_be_bytes([
             hash[offset] & 0x7f,
@@ -226,7 +243,8 @@ impl TotpGenerator {
         let current_time = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
-            .as_secs() / 30;
+            .as_secs()
+            / 30;
 
         for i in 0..=window {
             let test_time = current_time.saturating_sub(i as u64);

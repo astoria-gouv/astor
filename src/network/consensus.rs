@@ -1,5 +1,6 @@
 //! Consensus mechanism for the Astor network using Practical Byzantine Fault Tolerance (pBFT)
 
+use super::NodeConfig;
 use crate::errors::AstorError;
 use crate::ledger::Transaction;
 use crate::security::{KeyPair, Signature};
@@ -7,7 +8,6 @@ use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use super::NodeConfig;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum ConsensusState {
@@ -91,13 +91,13 @@ impl ConsensusEngine {
     pub async fn start(&mut self) -> Result<(), AstorError> {
         // Initialize validator set
         self.initialize_validators().await?;
-        
+
         // Determine if this node is primary
         self.update_primary_status().await;
-        
+
         // Start consensus rounds
         self.start_consensus_loop().await?;
-        
+
         Ok(())
     }
 
@@ -113,16 +113,19 @@ impl ConsensusEngine {
     pub async fn add_transaction(&self, transaction: Transaction) -> Result<(), AstorError> {
         let mut pending = self.pending_transactions.write().await;
         pending.push(transaction);
-        
+
         // Trigger consensus if we're primary and have enough transactions
         if self.is_primary && pending.len() >= 10 {
             self.initiate_consensus_round().await?;
         }
-        
+
         Ok(())
     }
 
-    pub async fn handle_consensus_message(&self, message: ConsensusMessage) -> Result<(), AstorError> {
+    pub async fn handle_consensus_message(
+        &self,
+        message: ConsensusMessage,
+    ) -> Result<(), AstorError> {
         match message {
             ConsensusMessage::PrePrepare { .. } => {
                 self.handle_pre_prepare(message).await?;
@@ -151,8 +154,10 @@ impl ConsensusEngine {
         let validators = self.validators.read().await;
         let mut validator_list: Vec<_> = validators.iter().collect();
         validator_list.sort();
-        
-        if let Some(primary) = validator_list.get((self.current_view % validator_list.len() as u64) as usize) {
+
+        if let Some(primary) =
+            validator_list.get((self.current_view % validator_list.len() as u64) as usize)
+        {
             self.is_primary = *primary == &self.config.node_id;
         }
     }
@@ -174,7 +179,7 @@ impl ConsensusEngine {
 
         let transactions = pending.drain(..).collect::<Vec<_>>();
         let digest = self.calculate_digest(&transactions);
-        
+
         let pre_prepare = ConsensusMessage::PrePrepare {
             view: self.current_view,
             sequence: self.current_sequence,
@@ -185,7 +190,7 @@ impl ConsensusEngine {
 
         // Broadcast pre-prepare message
         self.broadcast_consensus_message(pre_prepare).await?;
-        
+
         Ok(())
     }
 
@@ -220,7 +225,10 @@ impl ConsensusEngine {
         Ok(Signature::new(vec![0; 64])) // Placeholder
     }
 
-    async fn broadcast_consensus_message(&self, message: ConsensusMessage) -> Result<(), AstorError> {
+    async fn broadcast_consensus_message(
+        &self,
+        message: ConsensusMessage,
+    ) -> Result<(), AstorError> {
         // Broadcast to all validators
         Ok(())
     }

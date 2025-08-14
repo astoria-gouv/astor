@@ -1,12 +1,12 @@
 //! Certificate implementation for Astor Currency PKI
 
-use chrono::{DateTime, Utc, Duration};
-use serde::{Deserialize, Serialize};
+use chrono::{DateTime, Duration, Utc};
 use ed25519_dalek::PublicKey;
+use serde::{Deserialize, Serialize};
 
+use super::csr::CertificateSigningRequest;
 use crate::errors::AstorError;
 use crate::security::{KeyPair, Signature};
-use super::csr::CertificateSigningRequest;
 
 /// Digital certificate for Astor Currency operations
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -35,7 +35,7 @@ impl Certificate {
     ) -> Result<Self, AstorError> {
         let now = Utc::now();
         let not_after = now + Duration::days(validity_years as i64 * 365);
-        
+
         let subject = CertificateSubject {
             common_name: format!("{} Root CA", organization),
             organization: organization.clone(),
@@ -87,7 +87,7 @@ impl Certificate {
     ) -> Result<Self, AstorError> {
         let now = Utc::now();
         let not_after = now + Duration::days(validity_years as i64 * 365);
-        
+
         let subject = CertificateSubject {
             common_name: format!("{} Intermediate CA", ca_name),
             organization: issuer_cert.subject.organization.clone(),
@@ -152,10 +152,7 @@ impl Certificate {
                     is_ca: false,
                     path_length: None,
                 }),
-                key_usage: vec![
-                    KeyUsage::DigitalSignature,
-                    KeyUsage::KeyEncipherment,
-                ],
+                key_usage: vec![KeyUsage::DigitalSignature, KeyUsage::KeyEncipherment],
                 extended_key_usage: vec![
                     ExtendedKeyUsage::ServerAuth,
                     ExtendedKeyUsage::ClientAuth,
@@ -167,16 +164,15 @@ impl Certificate {
                     is_ca: false,
                     path_length: None,
                 }),
-                key_usage: vec![
-                    KeyUsage::DigitalSignature,
-                    KeyUsage::NonRepudiation,
-                ],
-                extended_key_usage: vec![
-                    ExtendedKeyUsage::ClientAuth,
-                ],
+                key_usage: vec![KeyUsage::DigitalSignature, KeyUsage::NonRepudiation],
+                extended_key_usage: vec![ExtendedKeyUsage::ClientAuth],
                 subject_alternative_names: csr.subject_alternative_names.clone(),
             },
-            _ => return Err(AstorError::InvalidOperation("Invalid certificate type for CSR".to_string())),
+            _ => {
+                return Err(AstorError::InvalidOperation(
+                    "Invalid certificate type for CSR".to_string(),
+                ))
+            }
         };
 
         let mut cert = Self {
@@ -227,7 +223,7 @@ impl Certificate {
             &String::from_utf8(self.signature.clone())?,
             "certificate_signature".to_string(),
         )?;
-        
+
         match signature.verify(issuer_public_key, &tbs_certificate) {
             Ok(_) => Ok(true),
             Err(_) => Ok(false),
@@ -237,9 +233,7 @@ impl Certificate {
     /// Check if certificate is currently valid
     pub fn is_valid(&self) -> bool {
         let now = Utc::now();
-        self.status == CertificateStatus::Valid 
-            && now >= self.not_before 
-            && now <= self.not_after
+        self.status == CertificateStatus::Valid && now >= self.not_before && now <= self.not_after
     }
 
     /// Get certificate public key
@@ -252,7 +246,7 @@ impl Certificate {
     pub fn to_pem(&self) -> Result<String, AstorError> {
         let cert_data = serde_json::to_vec(self)?;
         let encoded = base64::encode(cert_data);
-        
+
         Ok(format!(
             "-----BEGIN CERTIFICATE-----\n{}\n-----END CERTIFICATE-----",
             encoded
@@ -260,13 +254,27 @@ impl Certificate {
     }
 
     // Getters
-    pub fn serial_number(&self) -> &str { &self.serial_number }
-    pub fn subject(&self) -> &CertificateSubject { &self.subject }
-    pub fn issuer(&self) -> &CertificateSubject { &self.issuer }
-    pub fn not_before(&self) -> DateTime<Utc> { self.not_before }
-    pub fn not_after(&self) -> DateTime<Utc> { self.not_after }
-    pub fn certificate_type(&self) -> &CertificateType { &self.certificate_type }
-    pub fn status(&self) -> &CertificateStatus { &self.status }
+    pub fn serial_number(&self) -> &str {
+        &self.serial_number
+    }
+    pub fn subject(&self) -> &CertificateSubject {
+        &self.subject
+    }
+    pub fn issuer(&self) -> &CertificateSubject {
+        &self.issuer
+    }
+    pub fn not_before(&self) -> DateTime<Utc> {
+        self.not_before
+    }
+    pub fn not_after(&self) -> DateTime<Utc> {
+        self.not_after
+    }
+    pub fn certificate_type(&self) -> &CertificateType {
+        &self.certificate_type
+    }
+    pub fn status(&self) -> &CertificateStatus {
+        &self.status
+    }
 }
 
 /// Certificate types for different Astor Currency operations

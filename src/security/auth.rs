@@ -1,9 +1,9 @@
 //! Enhanced authentication and authorization
 
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use uuid::Uuid;
-use chrono::{DateTime, Utc};
 
 use crate::errors::AstorError;
 
@@ -100,12 +100,18 @@ impl AccessControl {
 
     /// Assign role to user
     pub fn assign_role(&mut self, user_id: Uuid, role: Role) {
-        self.user_roles.entry(user_id).or_insert_with(HashSet::new).insert(role);
+        self.user_roles
+            .entry(user_id)
+            .or_insert_with(HashSet::new)
+            .insert(role);
     }
 
     /// Grant specific permission to user
     pub fn grant_permission(&mut self, user_id: Uuid, permission: Permission) {
-        self.user_permissions.entry(user_id).or_insert_with(HashSet::new).insert(permission);
+        self.user_permissions
+            .entry(user_id)
+            .or_insert_with(HashSet::new)
+            .insert(permission);
     }
 
     /// Check if user has permission
@@ -167,9 +173,9 @@ impl MfaManager {
     pub fn enable_mfa(&mut self, user_id: Uuid) -> Result<String, AstorError> {
         let secret = crate::security::crypto::generate_secure_random(32);
         let secret_base32 = base64::encode(&secret);
-        
+
         self.user_secrets.insert(user_id, secret);
-        
+
         // Generate backup codes
         let mut backup_codes = HashSet::new();
         for _ in 0..10 {
@@ -184,7 +190,9 @@ impl MfaManager {
     /// Verify MFA code
     pub fn verify_mfa(&self, user_id: Uuid, code: &str) -> bool {
         if let Some(secret) = self.user_secrets.get(&user_id) {
-            let totp = crate::security::crypto::TotpGenerator { secret: secret.clone() };
+            let totp = crate::security::crypto::TotpGenerator {
+                secret: secret.clone(),
+            };
             if totp.verify_code(code, 1) {
                 return true;
             }
@@ -229,20 +237,21 @@ impl BruteForceProtection {
         // Clean old attempts
         let cutoff = Utc::now() - self.lockout_duration;
         self.attempts.retain(|a| a.timestamp > cutoff);
-        
+
         self.attempts.push(attempt);
     }
 
     /// Check if user/IP is locked out
     pub fn is_locked_out(&self, user_id: &str, ip_address: &str) -> bool {
         let cutoff = Utc::now() - self.lockout_duration;
-        
-        let failed_attempts = self.attempts
+
+        let failed_attempts = self
+            .attempts
             .iter()
             .filter(|a| {
-                a.timestamp > cutoff && 
-                !a.success && 
-                (a.user_id == user_id || a.ip_address == ip_address)
+                a.timestamp > cutoff
+                    && !a.success
+                    && (a.user_id == user_id || a.ip_address == ip_address)
             })
             .count();
 

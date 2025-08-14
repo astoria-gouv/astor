@@ -1,13 +1,13 @@
 //! Payment processing system for POS, cards, and mobile payments
 
-pub mod pos;
-pub mod cards;
-pub mod mobile;
-pub mod swift;
+// pub mod pos;
+// pub mod cards;
+// pub mod mobile;
+// pub mod swift;
 
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use chrono::{DateTime, Utc};
 
 use crate::errors::AstorError;
 
@@ -105,13 +105,15 @@ impl PaymentProcessor {
 
     /// Register merchant
     pub fn register_merchant(&mut self, merchant: Merchant) -> Result<(), AstorError> {
-        self.merchants.insert(merchant.merchant_id.clone(), merchant);
+        self.merchants
+            .insert(merchant.merchant_id.clone(), merchant);
         Ok(())
     }
 
     /// Add payment method
     pub fn add_payment_method(&mut self, payment_method: PaymentMethod) -> Result<(), AstorError> {
-        self.payment_methods.insert(payment_method.method_id.clone(), payment_method);
+        self.payment_methods
+            .insert(payment_method.method_id.clone(), payment_method);
         Ok(())
     }
 
@@ -125,19 +127,25 @@ impl PaymentProcessor {
         currency: String,
     ) -> Result<String, AstorError> {
         // Validate merchant
-        let _merchant = self.merchants.get(&merchant_id)
+        let _merchant = self
+            .merchants
+            .get(&merchant_id)
             .ok_or_else(|| AstorError::PaymentError("Merchant not found".to_string()))?;
 
         // Validate payment method
-        let payment_method = self.payment_methods.get(&payment_method_id)
+        let payment_method = self
+            .payment_methods
+            .get(&payment_method_id)
             .ok_or_else(|| AstorError::PaymentError("Payment method not found".to_string()))?;
 
         if !payment_method.is_active {
-            return Err(AstorError::PaymentError("Payment method is inactive".to_string()));
+            return Err(AstorError::PaymentError(
+                "Payment method is inactive".to_string(),
+            ));
         }
 
         let transaction_id = uuid::Uuid::new_v4().to_string();
-        
+
         let transaction = PaymentTransaction {
             transaction_id: transaction_id.clone(),
             merchant_id,
@@ -152,45 +160,59 @@ impl PaymentProcessor {
         };
 
         self.transactions.push(transaction);
-        
+
         // In production, this would:
         // 1. Authorize with card networks
         // 2. Check fraud rules
         // 3. Validate funds
         // 4. Process settlement
-        
+
         Ok(transaction_id)
     }
 
     /// Authorize payment
     pub fn authorize_payment(&mut self, transaction_id: &str) -> Result<(), AstorError> {
-        if let Some(transaction) = self.transactions.iter_mut().find(|t| t.transaction_id == transaction_id) {
+        if let Some(transaction) = self
+            .transactions
+            .iter_mut()
+            .find(|t| t.transaction_id == transaction_id)
+        {
             transaction.status = PaymentStatus::Authorized;
             transaction.processed_at = Some(Utc::now());
             Ok(())
         } else {
-            Err(AstorError::PaymentError("Transaction not found".to_string()))
+            Err(AstorError::PaymentError(
+                "Transaction not found".to_string(),
+            ))
         }
     }
 
     /// Capture payment
     pub fn capture_payment(&mut self, transaction_id: &str) -> Result<(), AstorError> {
-        if let Some(transaction) = self.transactions.iter_mut().find(|t| t.transaction_id == transaction_id) {
+        if let Some(transaction) = self
+            .transactions
+            .iter_mut()
+            .find(|t| t.transaction_id == transaction_id)
+        {
             if matches!(transaction.status, PaymentStatus::Authorized) {
                 transaction.status = PaymentStatus::Captured;
                 Ok(())
             } else {
-                Err(AstorError::PaymentError("Transaction not authorized".to_string()))
+                Err(AstorError::PaymentError(
+                    "Transaction not authorized".to_string(),
+                ))
             }
         } else {
-            Err(AstorError::PaymentError("Transaction not found".to_string()))
+            Err(AstorError::PaymentError(
+                "Transaction not found".to_string(),
+            ))
         }
     }
 
     /// Settle payments (batch process)
     pub fn settle_payments(&mut self) -> Result<Vec<String>, AstorError> {
         let mut settled_transactions = Vec::new();
-        
+
         for transaction in self.transactions.iter_mut() {
             if matches!(transaction.status, PaymentStatus::Captured) {
                 transaction.status = PaymentStatus::Settled;
@@ -198,7 +220,7 @@ impl PaymentProcessor {
                 settled_transactions.push(transaction.transaction_id.clone());
             }
         }
-        
+
         Ok(settled_transactions)
     }
 }

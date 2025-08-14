@@ -94,34 +94,30 @@ impl ProtocolHandler {
     pub async fn new() -> Result<Self, AstorError> {
         let (outbound_sender, _outbound_receiver) = mpsc::unbounded_channel();
         let (_inbound_sender, inbound_receiver) = mpsc::unbounded_channel();
-        
+
         let mut handler = Self {
             message_handlers: HashMap::new(),
             outbound_sender,
             inbound_receiver: Some(inbound_receiver),
         };
-        
+
         // Register default message handlers
         handler.register_handlers().await?;
-        
+
         Ok(handler)
     }
 
     async fn register_handlers(&mut self) -> Result<(), AstorError> {
         // Register handlers for different message types
-        self.message_handlers.insert(
-            MessageType::Handshake,
-            Box::new(HandshakeHandler::new()),
-        );
+        self.message_handlers
+            .insert(MessageType::Handshake, Box::new(HandshakeHandler::new()));
         self.message_handlers.insert(
             MessageType::Transaction,
             Box::new(TransactionHandler::new()),
         );
-        self.message_handlers.insert(
-            MessageType::Ping,
-            Box::new(PingHandler::new()),
-        );
-        
+        self.message_handlers
+            .insert(MessageType::Ping, Box::new(PingHandler::new()));
+
         Ok(())
     }
 
@@ -135,7 +131,8 @@ impl ProtocolHandler {
     }
 
     pub async fn send_message(&self, message: NetworkMessage) -> Result<(), AstorError> {
-        self.outbound_sender.send(message)
+        self.outbound_sender
+            .send(message)
             .map_err(|e| AstorError::NetworkError(format!("Failed to send message: {}", e)))?;
         Ok(())
     }

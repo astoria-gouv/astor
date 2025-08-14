@@ -1,10 +1,10 @@
 //! Inter-bank settlement system
 
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use chrono::{DateTime, Utc};
-use tokio::sync::RwLock;
 use std::sync::Arc;
+use tokio::sync::RwLock;
 
 use crate::errors::AstorError;
 
@@ -50,7 +50,7 @@ impl SettlementEngine {
         reference: String,
     ) -> Result<String, AstorError> {
         let settlement_id = uuid::Uuid::new_v4().to_string();
-        
+
         let settlement = Settlement {
             settlement_id: settlement_id.clone(),
             from_bank: from_bank.to_string(),
@@ -64,25 +64,25 @@ impl SettlementEngine {
 
         let mut pending = self.pending_settlements.write().await;
         pending.insert(settlement_id.clone(), settlement);
-        
+
         // In production, this would trigger actual settlement processing
         tokio::spawn(self.clone().execute_settlement(settlement_id.clone()));
-        
+
         Ok(settlement_id)
     }
 
     async fn execute_settlement(self, settlement_id: String) -> Result<(), AstorError> {
         tokio::time::sleep(tokio::time::Duration::from_secs(5)).await; // Simulate processing
-        
+
         let mut pending = self.pending_settlements.write().await;
         if let Some(mut settlement) = pending.remove(&settlement_id) {
             settlement.status = SettlementStatus::Completed;
             settlement.settled_at = Some(Utc::now());
-            
+
             let mut history = self.settlement_history.write().await;
             history.push(settlement);
         }
-        
+
         Ok(())
     }
 }

@@ -1,21 +1,21 @@
 //! Certificate Authority module for Astor Currency System
-//! 
+//!
 //! Provides PKI functionality similar to OpenSSL for HTTPS certificates,
 //! enabling centralized certificate issuance and management for currency operations.
 
 pub mod ca_core;
 pub mod certificate;
 pub mod csr;
-pub mod crl;
-pub mod ocsp;
-pub mod pki_hierarchy;
+// pub mod crl;
+// pub mod ocsp;
+// pub mod pki_hierarchy;
 
-pub use ca_core::{CertificateAuthority, CaConfig};
-pub use certificate::{Certificate, CertificateType, CertificateStatus};
-pub use csr::{CertificateSigningRequest, CsrProcessor};
+pub use ca_core::{CaConfig, CertificateAuthority};
+pub use certificate::{Certificate, CertificateStatus, CertificateType};
 pub use crl::{CertificateRevocationList, RevocationReason};
-pub use ocsp::{OcspResponder, OcspRequest, OcspResponse};
-pub use pki_hierarchy::{PkiHierarchy, CaLevel};
+pub use csr::{CertificateSigningRequest, CsrProcessor};
+pub use ocsp::{OcspRequest, OcspResponder, OcspResponse};
+pub use pki_hierarchy::{CaLevel, PkiHierarchy};
 
 use crate::errors::AstorError;
 use crate::security::KeyPair;
@@ -62,13 +62,19 @@ impl AstorCertificateAuthority {
 
         // Determine issuing CA based on certificate type
         let issuing_ca = match certificate_type {
-            CertificateType::RootCa => return Err(AstorError::InvalidOperation("Cannot issue root CA certificate".to_string())),
+            CertificateType::RootCa => {
+                return Err(AstorError::InvalidOperation(
+                    "Cannot issue root CA certificate".to_string(),
+                ))
+            }
             CertificateType::IntermediateCa => &self.root_ca,
             _ => self.get_appropriate_intermediate_ca(&certificate_type)?,
         };
 
         // Issue certificate
-        let certificate = issuing_ca.issue_certificate(csr, certificate_type, validity_days).await?;
+        let certificate = issuing_ca
+            .issue_certificate(csr, certificate_type, validity_days)
+            .await?;
 
         // Add to PKI hierarchy
         self.pki_hierarchy.add_certificate(certificate.clone())?;
@@ -91,11 +97,10 @@ impl AstorCertificateAuthority {
         keypair: KeyPair,
         config: CaConfig,
     ) -> Result<String, AstorError> {
-        let intermediate_ca = self.root_ca.create_intermediate_ca(
-            ca_name.clone(),
-            keypair,
-            config,
-        ).await?;
+        let intermediate_ca = self
+            .root_ca
+            .create_intermediate_ca(ca_name.clone(), keypair, config)
+            .await?;
 
         let ca_id = intermediate_ca.get_ca_id().to_string();
         self.intermediate_cas.insert(ca_id.clone(), intermediate_ca);
@@ -111,17 +116,28 @@ impl AstorCertificateAuthority {
         reason: RevocationReason,
     ) -> Result<(), AstorError> {
         // Add to CRL
-        self.crl_manager.revoke_certificate(serial_number, reason).await?;
+        self.crl_manager
+            .revoke_certificate(serial_number, reason)
+            .await?;
 
         // Update OCSP responder
-        self.ocsp_responder.mark_revoked(serial_number, reason).await?;
+        self.ocsp_responder
+            .mark_revoked(serial_number, reason)
+            .await?;
 
-        tracing::warn!("Certificate revoked: serial={}, reason={:?}", serial_number, reason);
+        tracing::warn!(
+            "Certificate revoked: serial={}, reason={:?}",
+            serial_number,
+            reason
+        );
         Ok(())
     }
 
     /// Validate certificate chain
-    pub fn validate_certificate_chain(&self, certificate: &Certificate) -> Result<bool, AstorError> {
+    pub fn validate_certificate_chain(
+        &self,
+        certificate: &Certificate,
+    ) -> Result<bool, AstorError> {
         self.pki_hierarchy.validate_chain(certificate)
     }
 
@@ -131,7 +147,10 @@ impl AstorCertificateAuthority {
     }
 
     /// Handle OCSP request
-    pub async fn handle_ocsp_request(&self, request: OcspRequest) -> Result<OcspResponse, AstorError> {
+    pub async fn handle_ocsp_request(
+        &self,
+        request: OcspRequest,
+    ) -> Result<OcspResponse, AstorError> {
         self.ocsp_responder.handle_request(request).await
     }
 
@@ -158,7 +177,10 @@ impl AstorCertificateAuthority {
         self.pki_hierarchy.get_certificate(serial_number)
     }
 
-    fn get_appropriate_intermediate_ca(&self, cert_type: &CertificateType) -> Result<&CertificateAuthority, AstorError> {
+    fn get_appropriate_intermediate_ca(
+        &self,
+        cert_type: &CertificateType,
+    ) -> Result<&CertificateAuthority, AstorError> {
         // For now, use root CA for all non-intermediate certificates
         // In production, you might have specialized intermediate CAs for different purposes
         Ok(&self.root_ca)

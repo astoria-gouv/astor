@@ -9,8 +9,8 @@ use uuid::Uuid;
 
 use crate::api::{
     models::{
-        AccountResponse, ApiResponse, CreateAccountRequest, 
-        PaginatedResponse, PaginationQuery, UpdateAccountRequest
+        AccountResponse, ApiResponse, CreateAccountRequest, PaginatedResponse, PaginationQuery,
+        UpdateAccountRequest,
     },
     AppState,
 };
@@ -22,7 +22,7 @@ pub async fn create_account(
     Json(request): Json<CreateAccountRequest>,
 ) -> Result<Json<ApiResponse<AccountResponse>>, StatusCode> {
     let repo = AccountRepository::new(state.database.pool().clone());
-    
+
     // Decode public key if provided
     let public_key = if let Some(key_str) = request.public_key {
         Some(base64::decode(&key_str).map_err(|_| StatusCode::BAD_REQUEST)?)
@@ -82,7 +82,7 @@ pub async fn list_accounts(
     Query(pagination): Query<PaginationQuery>,
 ) -> Result<Json<ApiResponse<PaginatedResponse<AccountResponse>>>, StatusCode> {
     let repo = AccountRepository::new(state.database.pool().clone());
-    
+
     let page = pagination.page.unwrap_or(1).max(1);
     let per_page = pagination.per_page.unwrap_or(20).min(100).max(1);
     let offset = (page - 1) * per_page;

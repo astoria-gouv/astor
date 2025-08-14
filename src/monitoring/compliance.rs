@@ -1,10 +1,10 @@
 //! Compliance monitoring and regulatory reporting
 
+use chrono::{DateTime, Duration, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use chrono::{DateTime, Utc, Duration};
 
 use crate::errors::AstorError;
 
@@ -158,19 +158,19 @@ impl ComplianceMonitor {
     pub async fn start_monitoring(&self) -> Result<(), AstorError> {
         // Start background tasks for compliance monitoring
         let events = self.events.clone();
-        
+
         tokio::spawn(async move {
             let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(3600)); // Hourly
-            
+
             loop {
                 interval.tick().await;
-                
+
                 // Perform periodic compliance checks
                 Self::perform_data_retention_check(&events).await;
                 Self::check_consent_expiry(&events).await;
             }
         });
-        
+
         tracing::info!("Compliance monitoring started");
         Ok(())
     }
@@ -178,18 +178,23 @@ impl ComplianceMonitor {
     /// Record compliance event
     pub async fn record_event(&self, event: ComplianceEvent) {
         let mut events = self.events.write().await;
-        
+
         // Add event
         events.push_back(event.clone());
-        
+
         // Maintain max size
         if events.len() > self.max_events {
             events.pop_front();
         }
-        
+
         // Log compliance event
         match &event {
-            ComplianceEvent::DataAccess { user_id, data_type, purpose, .. } => {
+            ComplianceEvent::DataAccess {
+                user_id,
+                data_type,
+                purpose,
+                ..
+            } => {
                 tracing::info!(
                     user_id = user_id,
                     data_type = data_type,
@@ -197,21 +202,33 @@ impl ComplianceMonitor {
                     "Data access recorded for compliance"
                 );
             }
-            ComplianceEvent::PrivacyRequest { user_id, request_type, .. } => {
+            ComplianceEvent::PrivacyRequest {
+                user_id,
+                request_type,
+                ..
+            } => {
                 tracing::info!(
                     user_id = user_id,
                     request_type = ?request_type,
                     "Privacy request recorded"
                 );
             }
-            ComplianceEvent::SecurityIncident { incident_id, severity, .. } => {
+            ComplianceEvent::SecurityIncident {
+                incident_id,
+                severity,
+                ..
+            } => {
                 tracing::warn!(
                     incident_id = incident_id,
                     severity = severity,
                     "Security incident recorded for compliance"
                 );
             }
-            ComplianceEvent::ComplianceViolation { violation_type, regulation, .. } => {
+            ComplianceEvent::ComplianceViolation {
+                violation_type,
+                regulation,
+                ..
+            } => {
                 tracing::error!(
                     violation_type = violation_type,
                     regulation = regulation,
@@ -232,7 +249,7 @@ impl ComplianceMonitor {
         end_date: DateTime<Utc>,
     ) -> Result<ComplianceReport, AstorError> {
         let events = self.events.read().await;
-        
+
         // Filter events by date range
         let filtered_events: Vec<ComplianceEvent> = events
             .iter()
@@ -304,7 +321,7 @@ impl ComplianceMonitor {
         expiry: Option<DateTime<Utc>>,
     ) -> Result<(), AstorError> {
         let mut gdpr = self.gdpr_compliance.write().await;
-        
+
         let consent_record = ConsentRecord {
             user_id: user_id.clone(),
             purpose: purpose.clone(),
@@ -312,17 +329,19 @@ impl ComplianceMonitor {
             timestamp: Utc::now(),
             expiry,
         };
-        
-        gdpr.consent_records.insert(format!("{}:{}", user_id, purpose), consent_record);
-        
+
+        gdpr.consent_records
+            .insert(format!("{}:{}", user_id, purpose), consent_record);
+
         // Record compliance event
         self.record_event(ComplianceEvent::DataAccess {
             user_id,
             data_type: "consent".to_string(),
             purpose,
             timestamp: Utc::now(),
-        }).await;
-        
+        })
+        .await;
+
         Ok(())
     }
 
@@ -333,7 +352,7 @@ impl ComplianceMonitor {
         request_type: PrivacyRequestType,
     ) -> Result<String, AstorError> {
         let request_id = uuid::Uuid::new_v4().to_string();
-        
+
         let privacy_request = PrivacyRequest {
             request_id: request_id.clone(),
             user_id: user_id.clone(),
@@ -342,18 +361,19 @@ impl ComplianceMonitor {
             submitted_at: Utc::now(),
             completed_at: None,
         };
-        
+
         let mut gdpr = self.gdpr_compliance.write().await;
         gdpr.privacy_requests.push(privacy_request);
-        
+
         // Record compliance event
         self.record_event(ComplianceEvent::PrivacyRequest {
             user_id,
             request_type,
             status: "pending".to_string(),
             timestamp: Utc::now(),
-        }).await;
-        
+        })
+        .await;
+
         Ok(request_id)
     }
 
@@ -375,12 +395,10 @@ impl ComplianceMonitor {
         start_date: DateTime<Utc>,
         end_date: DateTime<Utc>,
     ) -> Result<String, AstorError> {
-        let report = self.generate_report(
-            ComplianceReportType::AuditTrail,
-            start_date,
-            end_date,
-        ).await?;
-        
+        let report = self
+            .generate_report(ComplianceReportType::AuditTrail, start_date, end_date)
+            .await?;
+
         serde_json::to_string_pretty(&report)
             .map_err(|e| AstorError::ComplianceError(format!("Failed to export audit data: {}", e)))
     }

@@ -1,12 +1,12 @@
 //! Commercial banking operations - loans, deposits, credit
 
-pub mod loans;
-pub mod deposits;
-pub mod credit;
+// pub mod loans;
+// pub mod deposits;
+// pub mod credit;
 
+use chrono::{DateTime, Duration, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use chrono::{DateTime, Utc, Duration};
 
 use crate::errors::AstorError;
 
@@ -110,7 +110,7 @@ impl CommercialBank {
         interest_rate: f64,
     ) -> Result<String, AstorError> {
         let account_id = uuid::Uuid::new_v4().to_string();
-        
+
         let account = DepositAccount {
             account_id: account_id.clone(),
             customer_id,
@@ -136,7 +136,7 @@ impl CommercialBank {
     ) -> Result<String, AstorError> {
         // Credit check would happen here in production
         let loan_id = uuid::Uuid::new_v4().to_string();
-        
+
         let monthly_payment = self.calculate_monthly_payment(amount, interest_rate, term_months);
         let maturity_date = Utc::now() + Duration::days((term_months * 30) as i64);
 
@@ -161,25 +161,28 @@ impl CommercialBank {
     /// Calculate monthly loan payment
     fn calculate_monthly_payment(&self, principal: u64, annual_rate: f64, term_months: u32) -> u64 {
         let monthly_rate = annual_rate / 12.0;
-        let payment = (principal as f64 * monthly_rate * (1.0 + monthly_rate).powi(term_months as i32)) 
-            / ((1.0 + monthly_rate).powi(term_months as i32) - 1.0);
+        let payment =
+            (principal as f64 * monthly_rate * (1.0 + monthly_rate).powi(term_months as i32))
+                / ((1.0 + monthly_rate).powi(term_months as i32) - 1.0);
         payment.round() as u64
     }
 
     /// Pay interest on deposits
     pub fn pay_deposit_interest(&mut self) -> Result<u64, AstorError> {
         let mut total_interest_paid = 0u64;
-        
+
         for account in self.deposits.values_mut() {
             let days_since_last_payment = (Utc::now() - account.last_interest_payment).num_days();
-            if days_since_last_payment >= 30 { // Monthly interest
-                let interest = (account.balance as f64 * account.interest_rate / 12.0).round() as u64;
+            if days_since_last_payment >= 30 {
+                // Monthly interest
+                let interest =
+                    (account.balance as f64 * account.interest_rate / 12.0).round() as u64;
                 account.balance += interest;
                 account.last_interest_payment = Utc::now();
                 total_interest_paid += interest;
             }
         }
-        
+
         Ok(total_interest_paid)
     }
 }

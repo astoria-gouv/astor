@@ -28,11 +28,23 @@ pub struct FeatureFlag {
 /// Conditions for feature flag evaluation
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum FeatureFlagCondition {
-    UserRole { roles: Vec<String> },
-    Environment { environments: Vec<String> },
-    UserAttribute { key: String, values: Vec<String> },
-    TimeWindow { start: chrono::DateTime<chrono::Utc>, end: chrono::DateTime<chrono::Utc> },
-    Custom { rule: String },
+    UserRole {
+        roles: Vec<String>,
+    },
+    Environment {
+        environments: Vec<String>,
+    },
+    UserAttribute {
+        key: String,
+        values: Vec<String>,
+    },
+    TimeWindow {
+        start: chrono::DateTime<chrono::Utc>,
+        end: chrono::DateTime<chrono::Utc>,
+    },
+    Custom {
+        rule: String,
+    },
 }
 
 /// Context for feature flag evaluation
@@ -177,7 +189,7 @@ impl FeatureFlagManager {
         tokio::spawn(async move {
             loop {
                 interval.tick().await;
-                
+
                 if let Ok(updated_flags) = provider.get_flags().await {
                     if let Ok(mut flags_guard) = flags.write() {
                         *flags_guard = updated_flags;
@@ -195,7 +207,7 @@ impl FeatureFlagManager {
     /// Check if feature is enabled for given context
     pub fn is_enabled(&self, key: &str, context: &EvaluationContext) -> bool {
         let flags = self.flags.read().unwrap();
-        
+
         if let Some(flag) = flags.get(key) {
             self.evaluate_flag(flag, context)
         } else {
@@ -209,7 +221,7 @@ impl FeatureFlagManager {
         T: Clone + for<'de> Deserialize<'de>,
     {
         let flags = self.flags.read().unwrap();
-        
+
         if let Some(flag) = flags.get(key) {
             if self.evaluate_flag(flag, context) {
                 if let Some(value) = flag.metadata.get("value") {
@@ -219,7 +231,7 @@ impl FeatureFlagManager {
                 }
             }
         }
-        
+
         default
     }
 
@@ -249,17 +261,23 @@ impl FeatureFlagManager {
     }
 
     /// Evaluate individual condition
-    fn evaluate_condition(&self, condition: &FeatureFlagCondition, context: &EvaluationContext) -> bool {
+    fn evaluate_condition(
+        &self,
+        condition: &FeatureFlagCondition,
+        context: &EvaluationContext,
+    ) -> bool {
         match condition {
-            FeatureFlagCondition::UserRole { roles } => {
-                context.user_role.as_ref().map_or(false, |role| roles.contains(role))
-            }
+            FeatureFlagCondition::UserRole { roles } => context
+                .user_role
+                .as_ref()
+                .map_or(false, |role| roles.contains(role)),
             FeatureFlagCondition::Environment { environments } => {
                 environments.contains(&context.environment)
             }
-            FeatureFlagCondition::UserAttribute { key, values } => {
-                context.attributes.get(key).map_or(false, |value| values.contains(value))
-            }
+            FeatureFlagCondition::UserAttribute { key, values } => context
+                .attributes
+                .get(key)
+                .map_or(false, |value| values.contains(value)),
             FeatureFlagCondition::TimeWindow { start, end } => {
                 let now = chrono::Utc::now();
                 now >= *start && now <= *end

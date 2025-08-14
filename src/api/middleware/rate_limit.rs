@@ -1,11 +1,6 @@
 //! Rate limiting middleware
 
-use axum::{
-    extract::Request,
-    http::StatusCode,
-    middleware::Next,
-    response::Response,
-};
+use axum::{extract::Request, http::StatusCode, middleware::Next, response::Response};
 use std::{
     collections::HashMap,
     sync::{Arc, Mutex},
@@ -58,9 +53,14 @@ where
 {
     type Response = S::Response;
     type Error = S::Error;
-    type Future = std::pin::Pin<Box<dyn std::future::Future<Output = Result<Self::Response, Self::Error>> + Send>>;
+    type Future = std::pin::Pin<
+        Box<dyn std::future::Future<Output = Result<Self::Response, Self::Error>> + Send>,
+    >;
 
-    fn poll_ready(&mut self, cx: &mut std::task::Context<'_>) -> std::task::Poll<Result<(), Self::Error>> {
+    fn poll_ready(
+        &mut self,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Result<(), Self::Error>> {
         self.inner.poll_ready(cx)
     }
 
@@ -79,7 +79,7 @@ where
         store.retain(|_, (_, timestamp)| now.duration_since(*timestamp) < self.window);
 
         let (count, _) = store.entry(client_ip.clone()).or_insert((0, now));
-        
+
         if *count >= self.max_requests {
             drop(store);
             return Box::pin(async move {

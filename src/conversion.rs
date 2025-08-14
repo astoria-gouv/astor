@@ -1,12 +1,12 @@
 //! Currency conversion hooks and external API integration placeholders
 
+use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use tokio::time::{Duration, Instant};
-use reqwest::Client;
 
-use crate::errors::AstorError;
 use crate::database::models::ConversionRecord;
+use crate::errors::AstorError;
 
 /// Exchange rate information
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -49,9 +49,15 @@ impl ConversionService {
         Self {
             exchange_rates: HashMap::new(),
             supported_currencies: vec![
-                "USD".to_string(), "EUR".to_string(), "GBP".to_string(),
-                "JPY".to_string(), "CAD".to_string(), "AUD".to_string(),
-                "CHF".to_string(), "CNY".to_string(), "ASTOR".to_string(),
+                "USD".to_string(),
+                "EUR".to_string(),
+                "GBP".to_string(),
+                "JPY".to_string(),
+                "CAD".to_string(),
+                "AUD".to_string(),
+                "CHF".to_string(),
+                "CNY".to_string(),
+                "ASTOR".to_string(),
             ],
             http_client: Client::new(),
             api_keys: HashMap::new(),
@@ -70,7 +76,7 @@ impl ConversionService {
     /// Get exchange rate between currencies
     pub fn get_exchange_rate(&self, from: &str, to: &str) -> Result<f64, AstorError> {
         let key = format!("{}_{}", from, to);
-        
+
         if let Some(rate) = self.exchange_rates.get(&key) {
             Ok(rate.rate)
         } else {
@@ -79,9 +85,10 @@ impl ConversionService {
             if let Some(rate) = self.exchange_rates.get(&reverse_key) {
                 Ok(1.0 / rate.rate)
             } else {
-                Err(AstorError::TransactionValidationFailed(
-                    format!("Exchange rate not available for {} to {}", from, to)
-                ))
+                Err(AstorError::TransactionValidationFailed(format!(
+                    "Exchange rate not available for {} to {}",
+                    from, to
+                )))
             }
         }
     }
@@ -108,7 +115,7 @@ impl ConversionService {
 
         // Try multiple providers for redundancy
         let providers = vec!["exchangerate-api", "fixer", "currencylayer"];
-        
+
         for provider in providers {
             match self.fetch_from_provider(&provider).await {
                 Ok(_) => {
@@ -140,8 +147,9 @@ impl ConversionService {
     /// ExchangeRate-API integration
     async fn fetch_from_exchangerate_api(&mut self) -> Result<(), AstorError> {
         let url = "https://api.exchangerate-api.com/v4/latest/USD";
-        
-        let response: serde_json::Value = self.http_client
+
+        let response: serde_json::Value = self
+            .http_client
             .get(url)
             .send()
             .await
@@ -162,7 +170,7 @@ impl ConversionService {
                         ask: rate_value * 1.001, // Approximate ask
                         timestamp: chrono::Utc::now(),
                         source: "exchangerate-api".to_string(),
-                        volatility: 0.01, // Default volatility
+                        volatility: 0.01,  // Default volatility
                         daily_change: 0.0, // Would need historical data
                     });
                 }
@@ -176,12 +184,15 @@ impl ConversionService {
     async fn fetch_from_fixer(&mut self) -> Result<(), AstorError> {
         if let Some(api_key) = self.api_keys.get("fixer") {
             let url = format!("http://data.fixer.io/api/latest?access_key={}", api_key);
-            
-            let response: serde_json::Value = self.http_client
+
+            let response: serde_json::Value = self
+                .http_client
                 .get(&url)
                 .send()
                 .await
-                .map_err(|e| AstorError::ConversionFailed(format!("Fixer API request failed: {}", e)))?
+                .map_err(|e| {
+                    AstorError::ConversionFailed(format!("Fixer API request failed: {}", e))
+                })?
                 .json()
                 .await
                 .map_err(|e| AstorError::ConversionFailed(format!("JSON parsing failed: {}", e)))?;
@@ -215,12 +226,15 @@ impl ConversionService {
     async fn fetch_from_currencylayer(&mut self) -> Result<(), AstorError> {
         if let Some(api_key) = self.api_keys.get("currencylayer") {
             let url = format!("http://api.currencylayer.com/live?access_key={}", api_key);
-            
-            let response: serde_json::Value = self.http_client
+
+            let response: serde_json::Value = self
+                .http_client
                 .get(&url)
                 .send()
                 .await
-                .map_err(|e| AstorError::ConversionFailed(format!("CurrencyLayer API request failed: {}", e)))?
+                .map_err(|e| {
+                    AstorError::ConversionFailed(format!("CurrencyLayer API request failed: {}", e))
+                })?
                 .json()
                 .await
                 .map_err(|e| AstorError::ConversionFailed(format!("JSON parsing failed: {}", e)))?;
@@ -287,20 +301,31 @@ impl ConversionService {
     }
 
     /// Get detailed exchange rate information
-    pub fn get_exchange_rate_info(&self, from: &str, to: &str) -> Result<&ExchangeRate, AstorError> {
+    pub fn get_exchange_rate_info(
+        &self,
+        from: &str,
+        to: &str,
+    ) -> Result<&ExchangeRate, AstorError> {
         let key = format!("{}_{}", from, to);
-        
+
         if let Some(rate) = self.exchange_rates.get(&key) {
             Ok(rate)
         } else {
-            Err(AstorError::ConversionFailed(
-                format!("Exchange rate not available for {} to {}", from, to)
-            ))
+            Err(AstorError::ConversionFailed(format!(
+                "Exchange rate not available for {} to {}",
+                from, to
+            )))
         }
     }
 
     /// Enhanced conversion with fees and slippage protection
-    pub async fn convert_with_fees(&mut self, amount: u64, from: &str, to: &str, max_slippage: Option<f64>) -> Result<ConversionResult, AstorError> {
+    pub async fn convert_with_fees(
+        &mut self,
+        amount: u64,
+        from: &str,
+        to: &str,
+        max_slippage: Option<f64>,
+    ) -> Result<ConversionResult, AstorError> {
         if from == to {
             return Ok(ConversionResult {
                 original_amount: amount,
@@ -316,19 +341,20 @@ impl ConversionService {
         self.fetch_live_rates().await?;
 
         let rate_info = self.get_exchange_rate_info(from, to)?;
-        
+
         // Check slippage protection
         if let Some(max_slip) = max_slippage {
             if rate_info.volatility > max_slip {
-                return Err(AstorError::ConversionFailed(
-                    format!("Slippage {} exceeds maximum {}", rate_info.volatility, max_slip)
-                ));
+                return Err(AstorError::ConversionFailed(format!(
+                    "Slippage {} exceeds maximum {}",
+                    rate_info.volatility, max_slip
+                )));
             }
         }
 
         // Calculate conversion
         let converted_amount = (amount as f64 * rate_info.rate).round() as u64;
-        
+
         // Calculate fees
         let fee_rate = self.conversion_fees.get(to).unwrap_or(&0.001);
         let fees = (converted_amount as f64 * fee_rate).round() as u64;

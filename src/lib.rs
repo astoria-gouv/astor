@@ -1,50 +1,49 @@
 //! Astor Digital Currency System
-//! 
+//!
 //! A centralized digital currency system with administrator-controlled issuance,
 //! secure ledger management, and user account functionality.
 
-pub mod admin;
-pub mod ledger;
 pub mod accounts;
-pub mod transactions;
-pub mod security;
-pub mod conversion;
-pub mod errors;
+pub mod admin;
+pub mod analytics;
 pub mod api;
+pub mod banking_network;
+pub mod central_bank;
+pub mod certificate_authority;
+pub mod cli;
+pub mod commercial_banking;
 pub mod config;
+pub mod conversion;
 pub mod database;
+pub mod errors;
+pub mod interoperability;
+pub mod ledger;
 pub mod monitoring;
 pub mod network;
-pub mod central_bank;
-pub mod commercial_banking;
 pub mod payment_processing;
 pub mod regulatory;
+pub mod security;
 pub mod smart_contracts;
-pub mod interoperability;
-pub mod analytics;
-pub mod banking_network;
-pub mod cli;
-pub mod certificate_authority;
+pub mod transactions;
 
-pub use admin::AdminManager;
-pub use ledger::Ledger;
 pub use accounts::AccountManager;
-pub use transactions::TransactionManager;
-pub use security::{KeyPair, Signature};
+pub use admin::AdminManager;
+pub use banking_network::{BankStatus, BankingNetwork, RegisteredBank};
+pub use central_bank::CentralBank;
+pub use certificate_authority::{
+    AstorCertificateAuthority, Certificate, CertificateAuthorityConfig, CertificateSigningRequest,
+    CertificateStatus, CertificateType, CsrProcessor,
+};
+pub use cli::{CentralBankCli, CliHandler};
+pub use commercial_banking::CommercialBank;
 pub use errors::AstorError;
+pub use ledger::Ledger;
 pub use monitoring::MonitoringSystem;
 pub use network::{NetworkManager, NetworkStatus};
-pub use central_bank::CentralBank;
-pub use commercial_banking::CommercialBank;
 pub use payment_processing::PaymentProcessor;
 pub use regulatory::RegulatoryCompliance;
-pub use banking_network::{BankingNetwork, RegisteredBank, BankStatus};
-pub use cli::{CentralBankCli, CliHandler};
-pub use certificate_authority::{
-    AstorCertificateAuthority, CertificateAuthorityConfig,
-    Certificate, CertificateType, CertificateStatus,
-    CertificateSigningRequest, CsrProcessor,
-};
+pub use security::{KeyPair, Signature};
+pub use transactions::TransactionManager;
 
 /// Core Astor system that orchestrates all components
 pub struct AstorSystem {
@@ -74,11 +73,11 @@ impl AstorSystem {
         let monitoring = MonitoringSystem::new(monitoring_config).await?;
 
         let central_bank_config = central_bank::CentralBankConfig {
-            base_interest_rate: 0.025, // 2.5%
-            reserve_requirement_ratio: 0.10, // 10%
-            inflation_target: 0.02, // 2%
+            base_interest_rate: 0.025,        // 2.5%
+            reserve_requirement_ratio: 0.10,  // 10%
+            inflation_target: 0.02,           // 2%
             money_supply_growth_target: 0.03, // 3%
-            emergency_lending_rate: 0.05, // 5%
+            emergency_lending_rate: 0.05,     // 5%
         };
         let central_bank = CentralBank::new(central_bank_config);
         let commercial_banks = std::collections::HashMap::new();
@@ -169,23 +168,33 @@ impl AstorSystem {
         amount: u64,
         admin_signature: &Signature,
     ) -> Result<String, AstorError> {
-        self.monitoring.record_business_metric(
-            monitoring::BusinessMetric::CurrencyIssued {
+        self.monitoring
+            .record_business_metric(monitoring::BusinessMetric::CurrencyIssued {
                 amount: amount as i64,
                 issuer: admin_id.to_string(),
-            }
-        ).await;
+            })
+            .await;
 
         let decision_id = self.central_bank.issue_currency(
             amount,
-            format!("Currency issued by admin {} to account {}", admin_id, recipient_account)
+            format!(
+                "Currency issued by admin {} to account {}",
+                admin_id, recipient_account
+            ),
         )?;
 
-        Ok(format!("Currency issued successfully. Decision ID: {}", decision_id))
+        Ok(format!(
+            "Currency issued successfully. Decision ID: {}",
+            decision_id
+        ))
     }
 
     /// Register a commercial bank
-    pub fn register_commercial_bank(&mut self, bank_id: String, bank_name: String) -> Result<(), AstorError> {
+    pub fn register_commercial_bank(
+        &mut self,
+        bank_id: String,
+        bank_name: String,
+    ) -> Result<(), AstorError> {
         let bank = CommercialBank::new(bank_id.clone(), bank_name);
         self.commercial_banks.insert(bank_id, bank);
         Ok(())
@@ -224,14 +233,20 @@ impl AstorSystem {
     }
 
     /// Deploy the currency network
-    pub async fn deploy_network(&mut self, network_manager: &NetworkManager) -> Result<(), AstorError> {
+    pub async fn deploy_network(
+        &mut self,
+        network_manager: &NetworkManager,
+    ) -> Result<(), AstorError> {
         network_manager.start().await?;
         self.setup_network_handlers(network_manager).await?;
         tracing::info!("Astor currency network deployed successfully");
         Ok(())
     }
 
-    async fn setup_network_handlers(&self, network_manager: &NetworkManager) -> Result<(), AstorError> {
+    async fn setup_network_handlers(
+        &self,
+        network_manager: &NetworkManager,
+    ) -> Result<(), AstorError> {
         tracing::info!("Network handlers configured");
         Ok(())
     }
@@ -250,13 +265,15 @@ impl AstorSystem {
         public_key: String,
         services_offered: Vec<banking_network::BankingService>,
     ) -> Result<String, AstorError> {
-        self.banking_network.register_bank(
-            bank_name,
-            license_number,
-            api_endpoint,
-            public_key,
-            services_offered,
-        ).await
+        self.banking_network
+            .register_bank(
+                bank_name,
+                license_number,
+                api_endpoint,
+                public_key,
+                services_offered,
+            )
+            .await
     }
 
     /// Approve a bank registration
@@ -276,7 +293,9 @@ impl AstorSystem {
         certificate_type: CertificateType,
         validity_days: u32,
     ) -> Result<Certificate, AstorError> {
-        self.certificate_authority.issue_certificate(csr, certificate_type, validity_days).await
+        self.certificate_authority
+            .issue_certificate(csr, certificate_type, validity_days)
+            .await
     }
 
     /// Revoke certificate
@@ -285,7 +304,9 @@ impl AstorSystem {
         serial_number: &str,
         reason: certificate_authority::crl::RevocationReason,
     ) -> Result<(), AstorError> {
-        self.certificate_authority.revoke_certificate(serial_number, reason).await
+        self.certificate_authority
+            .revoke_certificate(serial_number, reason)
+            .await
     }
 
     /// Get root CA certificate for distribution
@@ -295,6 +316,7 @@ impl AstorSystem {
 
     /// Validate certificate chain
     pub fn validate_certificate(&self, certificate: &Certificate) -> Result<bool, AstorError> {
-        self.certificate_authority.validate_certificate_chain(certificate)
+        self.certificate_authority
+            .validate_certificate_chain(certificate)
     }
 }

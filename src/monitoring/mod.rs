@@ -1,9 +1,9 @@
 //! Comprehensive monitoring and observability system
 
 pub mod metrics;
-pub mod tracing;
+// pub mod tracing;
 pub mod health;
-pub mod alerts;
+// pub mod alerts;
 pub mod compliance;
 
 use serde::{Deserialize, Serialize};
@@ -42,13 +42,13 @@ impl MonitoringSystem {
     pub async fn start(&self) -> Result<(), AstorError> {
         // Start metrics collection
         self.metrics.start_collection().await?;
-        
+
         // Start health checks
         self.health_checker.start_checks().await?;
-        
+
         // Start alert monitoring
         self.alert_manager.start_monitoring().await?;
-        
+
         // Start compliance monitoring
         self.compliance_monitor.start_monitoring().await?;
 
@@ -75,11 +75,30 @@ impl MonitoringSystem {
 /// Business metrics for financial operations
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum BusinessMetric {
-    TransactionCreated { amount: i64, transaction_type: String },
-    TransactionCompleted { amount: i64, duration_ms: u64 },
-    TransactionFailed { reason: String },
-    CurrencyIssued { amount: i64, issuer: String },
-    AccountCreated { account_type: String },
-    SecurityViolation { violation_type: String, severity: String },
-    ComplianceCheck { check_type: String, result: bool },
+    TransactionCreated {
+        amount: i64,
+        transaction_type: String,
+    },
+    TransactionCompleted {
+        amount: i64,
+        duration_ms: u64,
+    },
+    TransactionFailed {
+        reason: String,
+    },
+    CurrencyIssued {
+        amount: i64,
+        issuer: String,
+    },
+    AccountCreated {
+        account_type: String,
+    },
+    SecurityViolation {
+        violation_type: String,
+        severity: String,
+    },
+    ComplianceCheck {
+        check_type: String,
+        result: bool,
+    },
 }

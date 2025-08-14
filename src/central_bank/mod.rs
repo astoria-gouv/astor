@@ -1,13 +1,13 @@
 //! Central banking functions for monetary policy and currency management
 
-pub mod monetary_policy;
-pub mod reserve_management;
-pub mod interest_rates;
-pub mod money_supply;
+// pub mod monetary_policy;
+// pub mod reserve_management;
+// pub mod interest_rates;
+// pub mod money_supply;
 
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use chrono::{DateTime, Utc};
 
 use crate::errors::AstorError;
 
@@ -41,10 +41,21 @@ pub struct MonetaryPolicyDecision {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum PolicyDecisionType {
-    InterestRateChange { old_rate: f64, new_rate: f64 },
-    ReserveRequirementChange { old_ratio: f64, new_ratio: f64 },
-    MoneySupplyAdjustment { amount: i64 }, // Positive = increase, negative = decrease
-    EmergencyMeasure { measure_type: String, details: String },
+    InterestRateChange {
+        old_rate: f64,
+        new_rate: f64,
+    },
+    ReserveRequirementChange {
+        old_ratio: f64,
+        new_ratio: f64,
+    },
+    MoneySupplyAdjustment {
+        amount: i64,
+    }, // Positive = increase, negative = decrease
+    EmergencyMeasure {
+        measure_type: String,
+        details: String,
+    },
 }
 
 impl CentralBank {
@@ -64,16 +75,24 @@ impl CentralBank {
     }
 
     /// Issue new currency (monetary expansion)
-    pub fn issue_currency(&mut self, amount: u64, justification: String) -> Result<String, AstorError> {
+    pub fn issue_currency(
+        &mut self,
+        amount: u64,
+        justification: String,
+    ) -> Result<String, AstorError> {
         let decision = MonetaryPolicyDecision {
             decision_id: uuid::Uuid::new_v4().to_string(),
-            decision_type: PolicyDecisionType::MoneySupplyAdjustment { amount: amount as i64 },
+            decision_type: PolicyDecisionType::MoneySupplyAdjustment {
+                amount: amount as i64,
+            },
             effective_date: Utc::now(),
             rationale: justification,
             impact_assessment: format!("Money supply increased by {} ASTOR", amount),
         };
 
-        self.total_money_supply = self.total_money_supply.checked_add(amount)
+        self.total_money_supply = self
+            .total_money_supply
+            .checked_add(amount)
             .ok_or_else(|| AstorError::CentralBankError("Money supply overflow".to_string()))?;
 
         self.monetary_policy_decisions.push(decision.clone());
@@ -81,15 +100,25 @@ impl CentralBank {
     }
 
     /// Set interest rates
-    pub fn set_interest_rate(&mut self, rate_type: String, new_rate: f64, justification: String) -> Result<(), AstorError> {
+    pub fn set_interest_rate(
+        &mut self,
+        rate_type: String,
+        new_rate: f64,
+        justification: String,
+    ) -> Result<(), AstorError> {
         let old_rate = self.interest_rates.get(&rate_type).copied().unwrap_or(0.0);
-        
+
         let decision = MonetaryPolicyDecision {
             decision_id: uuid::Uuid::new_v4().to_string(),
             decision_type: PolicyDecisionType::InterestRateChange { old_rate, new_rate },
             effective_date: Utc::now(),
             rationale: justification,
-            impact_assessment: format!("{} rate changed from {}% to {}%", rate_type, old_rate * 100.0, new_rate * 100.0),
+            impact_assessment: format!(
+                "{} rate changed from {}% to {}%",
+                rate_type,
+                old_rate * 100.0,
+                new_rate * 100.0
+            ),
         };
 
         self.interest_rates.insert(rate_type, new_rate);

@@ -1,9 +1,9 @@
 //! Security audit logging and compliance
 
-use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
-use uuid::Uuid;
+use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
+use uuid::Uuid;
 
 use crate::errors::AstorError;
 
@@ -111,7 +111,7 @@ impl SecurityAuditLogger {
 
         // Add to in-memory log
         self.logs.push_back(entry.clone());
-        
+
         // Maintain max size
         if self.logs.len() > self.max_logs {
             self.logs.pop_front();
@@ -124,9 +124,9 @@ impl SecurityAuditLogger {
         // - Write to persistent storage (database, file, SIEM)
         // - Send to monitoring systems
         // - Trigger alerts for critical events
-        
+
         tracing::info!("Security event logged: {:?}", entry);
-        
+
         Ok(())
     }
 
@@ -159,24 +159,27 @@ impl SecurityAuditLogger {
         };
 
         // Count recent events of this type
-        let recent_count = self.logs
+        let recent_count = self
+            .logs
             .iter()
             .rev()
             .take(100) // Check last 100 events
             .filter(|entry| {
                 // Check if event matches type and is recent (last hour)
                 let is_recent = match &entry.event {
-                    SecurityEvent::LoginAttempt { timestamp, success: false, .. } => {
-                        event_type == "failed_login" && 
-                        Utc::now() - *timestamp < chrono::Duration::hours(1)
+                    SecurityEvent::LoginAttempt {
+                        timestamp,
+                        success: false,
+                        ..
+                    } => {
+                        event_type == "failed_login"
+                            && Utc::now() - *timestamp < chrono::Duration::hours(1)
                     }
                     SecurityEvent::PermissionDenied { timestamp, .. } => {
-                        event_type == "permission_denied" && 
-                        Utc::now() - *timestamp < chrono::Duration::hours(1)
+                        event_type == "permission_denied"
+                            && Utc::now() - *timestamp < chrono::Duration::hours(1)
                     }
-                    SecurityEvent::HighRiskOperation { .. } => {
-                        event_type == "high_risk_operation"
-                    }
+                    SecurityEvent::HighRiskOperation { .. } => event_type == "high_risk_operation",
                     _ => false,
                 };
                 is_recent
@@ -187,12 +190,14 @@ impl SecurityAuditLogger {
             if recent_count >= threshold as usize {
                 // In production, this would trigger alerts via:
                 // - Email notifications
-                // - Slack/Teams messages  
+                // - Slack/Teams messages
                 // - PagerDuty incidents
                 // - SIEM system alerts
                 tracing::warn!(
                     "Alert threshold exceeded for {}: {} events in last hour (threshold: {})",
-                    event_type, recent_count, threshold
+                    event_type,
+                    recent_count,
+                    threshold
                 );
             }
         }
@@ -206,10 +211,13 @@ impl SecurityAuditLogger {
         severity_filter: Option<AuditSeverity>,
         limit: Option<usize>,
     ) -> Vec<&AuditLogEntry> {
-        let mut filtered: Vec<&AuditLogEntry> = self.logs
+        let mut filtered: Vec<&AuditLogEntry> = self
+            .logs
             .iter()
             .filter(|entry| {
-                severity_filter.as_ref().map_or(true, |s| entry.severity >= *s)
+                severity_filter
+                    .as_ref()
+                    .map_or(true, |s| entry.severity >= *s)
             })
             .collect();
 
@@ -244,8 +252,13 @@ impl SecurityAuditLogger {
     }
 
     /// Generate compliance report
-    pub fn generate_compliance_report(&self, start_date: DateTime<Utc>, end_date: DateTime<Utc>) -> ComplianceReport {
-        let relevant_logs: Vec<&AuditLogEntry> = self.logs
+    pub fn generate_compliance_report(
+        &self,
+        start_date: DateTime<Utc>,
+        end_date: DateTime<Utc>,
+    ) -> ComplianceReport {
+        let relevant_logs: Vec<&AuditLogEntry> = self
+            .logs
             .iter()
             .filter(|entry| {
                 let event_time = match &entry.event {

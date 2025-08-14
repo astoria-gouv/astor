@@ -1,10 +1,10 @@
 //! Account repository for database operations
 
-use sqlx::PgPool;
-use uuid::Uuid;
-use chrono::Utc;
 use crate::database::models::AccountModel;
 use crate::errors::AstorError;
+use chrono::Utc;
+use sqlx::PgPool;
+use uuid::Uuid;
 
 pub struct AccountRepository {
     pool: PgPool,
@@ -44,16 +44,14 @@ impl AccountRepository {
 
     /// Get account by ID
     pub async fn get_account(&self, account_id: Uuid) -> Result<AccountModel, AstorError> {
-        let account = sqlx::query_as::<_, AccountModel>(
-            "SELECT * FROM accounts WHERE id = $1"
-        )
-        .bind(account_id)
-        .fetch_one(&self.pool)
-        .await
-        .map_err(|e| match e {
-            sqlx::Error::RowNotFound => AstorError::AccountNotFound(account_id.to_string()),
-            _ => AstorError::DatabaseError(format!("Failed to get account: {}", e)),
-        })?;
+        let account = sqlx::query_as::<_, AccountModel>("SELECT * FROM accounts WHERE id = $1")
+            .bind(account_id)
+            .fetch_one(&self.pool)
+            .await
+            .map_err(|e| match e {
+                sqlx::Error::RowNotFound => AstorError::AccountNotFound(account_id.to_string()),
+                _ => AstorError::DatabaseError(format!("Failed to get account: {}", e)),
+            })?;
 
         Ok(account)
     }
@@ -65,7 +63,7 @@ impl AccountRepository {
         new_balance: i64,
     ) -> Result<(), AstorError> {
         let now = Utc::now();
-        
+
         let result = sqlx::query(
             r#"
             UPDATE accounts 
@@ -89,15 +87,16 @@ impl AccountRepository {
 
     /// Freeze/unfreeze account
     pub async fn set_frozen(&self, account_id: Uuid, frozen: bool) -> Result<(), AstorError> {
-        let result = sqlx::query(
-            "UPDATE accounts SET is_frozen = $1, updated_at = $2 WHERE id = $3"
-        )
-        .bind(frozen)
-        .bind(Utc::now())
-        .bind(account_id)
-        .execute(&self.pool)
-        .await
-        .map_err(|e| AstorError::DatabaseError(format!("Failed to update account status: {}", e)))?;
+        let result =
+            sqlx::query("UPDATE accounts SET is_frozen = $1, updated_at = $2 WHERE id = $3")
+                .bind(frozen)
+                .bind(Utc::now())
+                .bind(account_id)
+                .execute(&self.pool)
+                .await
+                .map_err(|e| {
+                    AstorError::DatabaseError(format!("Failed to update account status: {}", e))
+                })?;
 
         if result.rows_affected() == 0 {
             return Err(AstorError::AccountNotFound(account_id.to_string()));

@@ -1,8 +1,8 @@
+use crate::database::models::AdminRecord;
+use crate::errors::AstorError;
+use chrono::{DateTime, Utc};
 use sqlx::{PgPool, Row};
 use uuid::Uuid;
-use chrono::{DateTime, Utc};
-use crate::errors::AstorError;
-use crate::database::models::AdminRecord;
 
 #[derive(Clone)]
 pub struct AdminRepository {
@@ -37,13 +37,10 @@ impl AdminRepository {
     }
 
     pub async fn get_admin(&self, id: Uuid) -> Result<Option<AdminRecord>, AstorError> {
-        let row = sqlx::query!(
-            "SELECT * FROM admins WHERE id = $1",
-            id
-        )
-        .fetch_optional(&self.pool)
-        .await
-        .map_err(|e| AstorError::DatabaseError(e.to_string()))?;
+        let row = sqlx::query!("SELECT * FROM admins WHERE id = $1", id)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(|e| AstorError::DatabaseError(e.to_string()))?;
 
         if let Some(row) = row {
             Ok(Some(AdminRecord {
@@ -63,14 +60,14 @@ impl AdminRepository {
         }
     }
 
-    pub async fn get_admin_by_username(&self, username: &str) -> Result<Option<AdminRecord>, AstorError> {
-        let row = sqlx::query!(
-            "SELECT * FROM admins WHERE username = $1",
-            username
-        )
-        .fetch_optional(&self.pool)
-        .await
-        .map_err(|e| AstorError::DatabaseError(e.to_string()))?;
+    pub async fn get_admin_by_username(
+        &self,
+        username: &str,
+    ) -> Result<Option<AdminRecord>, AstorError> {
+        let row = sqlx::query!("SELECT * FROM admins WHERE username = $1", username)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(|e| AstorError::DatabaseError(e.to_string()))?;
 
         if let Some(row) = row {
             Ok(Some(AdminRecord {
@@ -90,7 +87,11 @@ impl AdminRepository {
         }
     }
 
-    pub async fn list_admins(&self, limit: i64, offset: i64) -> Result<Vec<AdminRecord>, AstorError> {
+    pub async fn list_admins(
+        &self,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<AdminRecord>, AstorError> {
         let rows = sqlx::query!(
             "SELECT * FROM admins ORDER BY created_at DESC LIMIT $1 OFFSET $2",
             limit,
@@ -100,18 +101,21 @@ impl AdminRepository {
         .await
         .map_err(|e| AstorError::DatabaseError(e.to_string()))?;
 
-        let admins = rows.into_iter().map(|row| AdminRecord {
-            id: row.id,
-            username: row.username,
-            email: row.email,
-            role: row.role,
-            permissions: row.permissions,
-            password_hash: row.password_hash,
-            is_active: row.is_active,
-            last_login: row.last_login,
-            created_at: row.created_at,
-            updated_at: row.updated_at,
-        }).collect();
+        let admins = rows
+            .into_iter()
+            .map(|row| AdminRecord {
+                id: row.id,
+                username: row.username,
+                email: row.email,
+                role: row.role,
+                permissions: row.permissions,
+                password_hash: row.password_hash,
+                is_active: row.is_active,
+                last_login: row.last_login,
+                created_at: row.created_at,
+                updated_at: row.updated_at,
+            })
+            .collect();
 
         Ok(admins)
     }

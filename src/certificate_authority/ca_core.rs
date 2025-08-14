@@ -1,13 +1,13 @@
 //! Core Certificate Authority implementation
 
-use std::collections::HashMap;
-use chrono::{DateTime, Utc, Duration};
+use chrono::{DateTime, Duration, Utc};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
-use crate::errors::AstorError;
-use crate::security::KeyPair;
 use super::certificate::{Certificate, CertificateType};
 use super::csr::CertificateSigningRequest;
+use crate::errors::AstorError;
+use crate::security::KeyPair;
 
 /// Certificate Authority core implementation
 #[derive(Clone)]
@@ -24,7 +24,7 @@ impl CertificateAuthority {
     /// Create new root Certificate Authority
     pub fn new_root(keypair: KeyPair, config: CaConfig) -> Result<Self, AstorError> {
         let ca_id = uuid::Uuid::new_v4();
-        
+
         // Create self-signed root certificate
         let ca_certificate = Certificate::new_root_ca(
             keypair.public_key(),
@@ -51,13 +51,11 @@ impl CertificateAuthority {
         config: CaConfig,
     ) -> Result<CertificateAuthority, AstorError> {
         let ca_id = uuid::Uuid::new_v4();
-        
+
         // Create intermediate CA certificate signed by this CA
-        let ca_certificate = self.sign_intermediate_ca_certificate(
-            keypair.public_key(),
-            ca_name,
-            config.validity_years,
-        ).await?;
+        let ca_certificate = self
+            .sign_intermediate_ca_certificate(keypair.public_key(), ca_name, config.validity_years)
+            .await?;
 
         Ok(CertificateAuthority {
             ca_id,
@@ -77,7 +75,7 @@ impl CertificateAuthority {
         validity_days: u32,
     ) -> Result<Certificate, AstorError> {
         let serial_number = self.generate_serial_number();
-        
+
         let certificate = Certificate::from_csr(
             csr,
             serial_number,
@@ -104,7 +102,7 @@ impl CertificateAuthority {
         validity_years: u32,
     ) -> Result<Certificate, AstorError> {
         let serial_number = self.generate_serial_number();
-        
+
         Certificate::new_intermediate_ca(
             public_key,
             ca_name,
@@ -165,10 +163,7 @@ impl Default for CaConfig {
                 "keyCertSign".to_string(),
                 "cRLSign".to_string(),
             ],
-            extended_key_usage: vec![
-                "serverAuth".to_string(),
-                "clientAuth".to_string(),
-            ],
+            extended_key_usage: vec!["serverAuth".to_string(), "clientAuth".to_string()],
         }
     }
 }

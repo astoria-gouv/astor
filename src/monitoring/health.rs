@@ -58,13 +58,13 @@ impl HealthChecker {
     pub async fn start_checks(&self) -> Result<(), AstorError> {
         let checks = self.checks.clone();
         let config = self.config.clone();
-        
+
         tokio::spawn(async move {
             let mut interval = interval(Duration::from_secs(config.interval));
-            
+
             loop {
                 interval.tick().await;
-                
+
                 // Run all configured health checks
                 for check_name in &config.checks {
                     let result = match check_name.as_str() {
@@ -80,13 +80,13 @@ impl HealthChecker {
                             timestamp: chrono::Utc::now(),
                         },
                     };
-                    
+
                     let mut checks_guard = checks.write().await;
                     checks_guard.insert(check_name.clone(), result);
                 }
             }
         });
-        
+
         tracing::info!("Health checks started");
         Ok(())
     }
@@ -95,7 +95,7 @@ impl HealthChecker {
     pub async fn get_status(&self) -> SystemHealth {
         let checks_guard = self.checks.read().await;
         let checks: Vec<HealthCheckResult> = checks_guard.values().cloned().collect();
-        
+
         // Determine overall status
         let overall_status = if checks.iter().any(|c| c.status == HealthStatus::Unhealthy) {
             HealthStatus::Unhealthy
@@ -104,7 +104,7 @@ impl HealthChecker {
         } else {
             HealthStatus::Healthy
         };
-        
+
         SystemHealth {
             status: overall_status,
             checks,
@@ -118,13 +118,13 @@ impl HealthChecker {
     async fn check_database() -> HealthCheckResult {
         let start = Instant::now();
         let name = "database".to_string();
-        
+
         // In production, this would actually test database connectivity
         // For now, simulate a health check
         tokio::time::sleep(Duration::from_millis(10)).await;
-        
+
         let duration_ms = start.elapsed().as_millis() as u64;
-        
+
         HealthCheckResult {
             name,
             status: HealthStatus::Healthy,
@@ -138,12 +138,12 @@ impl HealthChecker {
     async fn check_redis() -> HealthCheckResult {
         let start = Instant::now();
         let name = "redis".to_string();
-        
+
         // In production, this would actually test Redis connectivity
         tokio::time::sleep(Duration::from_millis(5)).await;
-        
+
         let duration_ms = start.elapsed().as_millis() as u64;
-        
+
         HealthCheckResult {
             name,
             status: HealthStatus::Healthy,
@@ -157,20 +157,29 @@ impl HealthChecker {
     async fn check_disk_space() -> HealthCheckResult {
         let start = Instant::now();
         let name = "disk_space".to_string();
-        
+
         // In production, this would check actual disk usage
         let disk_usage_percent = 45.0; // Placeholder
-        
+
         let (status, message) = if disk_usage_percent > 90.0 {
-            (HealthStatus::Unhealthy, format!("Disk usage critical: {}%", disk_usage_percent))
+            (
+                HealthStatus::Unhealthy,
+                format!("Disk usage critical: {}%", disk_usage_percent),
+            )
         } else if disk_usage_percent > 80.0 {
-            (HealthStatus::Degraded, format!("Disk usage high: {}%", disk_usage_percent))
+            (
+                HealthStatus::Degraded,
+                format!("Disk usage high: {}%", disk_usage_percent),
+            )
         } else {
-            (HealthStatus::Healthy, format!("Disk usage normal: {}%", disk_usage_percent))
+            (
+                HealthStatus::Healthy,
+                format!("Disk usage normal: {}%", disk_usage_percent),
+            )
         };
-        
+
         let duration_ms = start.elapsed().as_millis() as u64;
-        
+
         HealthCheckResult {
             name,
             status,
@@ -184,20 +193,29 @@ impl HealthChecker {
     async fn check_memory() -> HealthCheckResult {
         let start = Instant::now();
         let name = "memory".to_string();
-        
+
         // In production, this would check actual memory usage
         let memory_usage_percent = 65.0; // Placeholder
-        
+
         let (status, message) = if memory_usage_percent > 90.0 {
-            (HealthStatus::Unhealthy, format!("Memory usage critical: {}%", memory_usage_percent))
+            (
+                HealthStatus::Unhealthy,
+                format!("Memory usage critical: {}%", memory_usage_percent),
+            )
         } else if memory_usage_percent > 80.0 {
-            (HealthStatus::Degraded, format!("Memory usage high: {}%", memory_usage_percent))
+            (
+                HealthStatus::Degraded,
+                format!("Memory usage high: {}%", memory_usage_percent),
+            )
         } else {
-            (HealthStatus::Healthy, format!("Memory usage normal: {}%", memory_usage_percent))
+            (
+                HealthStatus::Healthy,
+                format!("Memory usage normal: {}%", memory_usage_percent),
+            )
         };
-        
+
         let duration_ms = start.elapsed().as_millis() as u64;
-        
+
         HealthCheckResult {
             name,
             status,

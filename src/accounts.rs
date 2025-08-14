@@ -1,13 +1,13 @@
 //! User account management module
 
-use std::collections::HashMap;
+use chrono::{DateTime, Utc};
 use ed25519_dalek::PublicKey;
 use serde::{Deserialize, Serialize};
-use chrono::{DateTime, Utc};
+use std::collections::HashMap;
 use uuid::Uuid;
 
-use crate::security::Signature;
 use crate::errors::AstorError;
+use crate::security::Signature;
 
 /// User account information
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -36,7 +36,7 @@ impl AccountManager {
     /// Create a new user account
     pub fn create_account(&mut self, public_key: Option<PublicKey>) -> String {
         let account_id = Uuid::new_v4().to_string();
-        
+
         let account = Account {
             id: account_id.clone(),
             public_key,
@@ -67,22 +67,23 @@ impl AccountManager {
     /// Credit account with amount
     pub fn credit_account(&mut self, account_id: &str, amount: u64) -> Result<(), AstorError> {
         let account = self.get_account_mut(account_id)?;
-        
+
         if account.is_frozen {
             return Err(AstorError::Unauthorized("Account is frozen".to_string()));
         }
 
-        account.balance = account.balance.checked_add(amount)
-            .ok_or_else(|| AstorError::TransactionValidationFailed("Balance overflow".to_string()))?;
+        account.balance = account.balance.checked_add(amount).ok_or_else(|| {
+            AstorError::TransactionValidationFailed("Balance overflow".to_string())
+        })?;
         account.last_transaction = Some(Utc::now());
-        
+
         Ok(())
     }
 
     /// Debit account with amount
     pub fn debit_account(&mut self, account_id: &str, amount: u64) -> Result<(), AstorError> {
         let account = self.get_account_mut(account_id)?;
-        
+
         if account.is_frozen {
             return Err(AstorError::Unauthorized("Account is frozen".to_string()));
         }
@@ -93,12 +94,16 @@ impl AccountManager {
 
         account.balance -= amount;
         account.last_transaction = Some(Utc::now());
-        
+
         Ok(())
     }
 
     /// Check if account has sufficient balance
-    pub fn has_sufficient_balance(&self, account_id: &str, amount: u64) -> Result<bool, AstorError> {
+    pub fn has_sufficient_balance(
+        &self,
+        account_id: &str,
+        amount: u64,
+    ) -> Result<bool, AstorError> {
         let account = self.get_account(account_id)?;
         Ok(account.balance >= amount)
     }
@@ -110,14 +115,16 @@ impl AccountManager {
         signature: &Signature,
     ) -> Result<(), AstorError> {
         let account = self.get_account(account_id)?;
-        
+
         if let Some(public_key) = &account.public_key {
             let message = format!("transfer_from_{}", account_id);
             signature.verify(public_key, message.as_bytes())?;
         } else {
-            return Err(AstorError::Unauthorized("Account has no public key for verification".to_string()));
+            return Err(AstorError::Unauthorized(
+                "Account has no public key for verification".to_string(),
+            ));
         }
-        
+
         Ok(())
     }
 

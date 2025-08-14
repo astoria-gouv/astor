@@ -7,8 +7,8 @@ use std::collections::HashMap;
 use uuid::Uuid;
 
 pub mod vm;
-pub mod compiler;
-pub mod stdlib;
+// pub mod compiler;
+// pub mod stdlib;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SmartContract {
@@ -71,11 +71,11 @@ impl ContractEngine {
         owner: String,
     ) -> AstorResult<Uuid> {
         let contract_id = Uuid::new_v4();
-        
+
         // Compile source code to bytecode
         let bytecode = compiler::compile(&source_code)?;
         let abi = compiler::extract_abi(&source_code)?;
-        
+
         let contract = SmartContract {
             id: contract_id,
             name,
@@ -87,7 +87,7 @@ impl ContractEngine {
             gas_limit: 1_000_000,
             state: HashMap::new(),
         };
-        
+
         self.contracts.insert(contract_id, contract);
         Ok(contract_id)
     }
@@ -100,9 +100,13 @@ impl ContractEngine {
         caller: String,
         gas_limit: u64,
     ) -> AstorResult<serde_json::Value> {
-        let contract = self.contracts.get_mut(&contract_id)
+        let contract = self
+            .contracts
+            .get_mut(&contract_id)
             .ok_or_else(|| crate::errors::AstorError::NotFound("Contract not found".to_string()))?;
-        
-        self.vm.execute(contract, function_name, args, caller, gas_limit).await
+
+        self.vm
+            .execute(contract, function_name, args, caller, gas_limit)
+            .await
     }
 }

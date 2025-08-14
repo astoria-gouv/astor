@@ -1,13 +1,13 @@
-use axum::{
-    extract::{Json, Path, Query, State},
-    response::Json as ResponseJson,
-};
-use serde::{Deserialize, Serialize};
 use crate::{
     errors::AstorError,
     transactions::{Transaction, TransactionManager, TransactionType},
     AppState,
 };
+use axum::{
+    extract::{Json, Path, Query, State},
+    response::Json as ResponseJson,
+};
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize)]
 pub struct CreateTransactionRequest {
@@ -37,7 +37,7 @@ pub async fn create_transaction(
     Json(request): Json<CreateTransactionRequest>,
 ) -> Result<ResponseJson<Transaction>, AstorError> {
     let mut transaction_manager = TransactionManager::new();
-    
+
     let transaction = transaction_manager.create_transaction(
         request.from_account,
         request.to_account,
@@ -45,7 +45,7 @@ pub async fn create_transaction(
         request.transaction_type,
         request.description,
     )?;
-    
+
     Ok(ResponseJson(transaction))
 }
 
@@ -54,14 +54,14 @@ pub async fn get_transactions(
     Query(query): Query<TransactionQuery>,
 ) -> Result<ResponseJson<TransactionResponse>, AstorError> {
     let transaction_manager = TransactionManager::new();
-    
+
     let transactions = transaction_manager.get_transactions(
         query.account_id.as_deref(),
         query.transaction_type,
         query.limit.unwrap_or(100),
         query.offset.unwrap_or(0),
     )?;
-    
+
     Ok(ResponseJson(TransactionResponse {
         total_count: transactions.len(),
         transactions,
@@ -73,10 +73,11 @@ pub async fn get_transaction(
     Path(transaction_id): Path<String>,
 ) -> Result<ResponseJson<Transaction>, AstorError> {
     let transaction_manager = TransactionManager::new();
-    
-    let transaction = transaction_manager.get_transaction(&transaction_id)?
+
+    let transaction = transaction_manager
+        .get_transaction(&transaction_id)?
         .ok_or(AstorError::NotFound("Transaction not found".to_string()))?;
-    
+
     Ok(ResponseJson(transaction))
 }
 
@@ -85,8 +86,8 @@ pub async fn cancel_transaction(
     Path(transaction_id): Path<String>,
 ) -> Result<ResponseJson<Transaction>, AstorError> {
     let mut transaction_manager = TransactionManager::new();
-    
+
     let transaction = transaction_manager.cancel_transaction(&transaction_id)?;
-    
+
     Ok(ResponseJson(transaction))
 }

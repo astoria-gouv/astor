@@ -1,11 +1,11 @@
 //! Certificate Signing Request implementation
 
-use serde::{Deserialize, Serialize};
 use ed25519_dalek::PublicKey;
+use serde::{Deserialize, Serialize};
 
+use super::certificate::CertificateSubject;
 use crate::errors::AstorError;
 use crate::security::{KeyPair, Signature};
-use super::certificate::CertificateSubject;
 
 /// Certificate Signing Request
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -28,7 +28,7 @@ impl CertificateSigningRequest {
         subject_alternative_names: Vec<String>,
     ) -> Result<Self, AstorError> {
         let public_key = keypair.public_key().as_bytes().to_vec();
-        
+
         let mut csr = Self {
             version: 1,
             subject,
@@ -66,13 +66,13 @@ impl CertificateSigningRequest {
     pub fn verify_signature(&self) -> Result<bool, AstorError> {
         let public_key = PublicKey::from_bytes(&self.public_key)
             .map_err(|e| AstorError::CryptographicError(e.to_string()))?;
-        
+
         let tbs_data = self.to_be_signed_bytes()?;
         let signature = Signature::from_base64(
             &String::from_utf8(self.signature.clone())?,
             "csr_signature".to_string(),
         )?;
-        
+
         match signature.verify(&public_key, &tbs_data) {
             Ok(_) => Ok(true),
             Err(_) => Ok(false),
@@ -83,7 +83,7 @@ impl CertificateSigningRequest {
     pub fn to_pem(&self) -> Result<String, AstorError> {
         let csr_data = serde_json::to_vec(self)?;
         let encoded = base64::encode(csr_data);
-        
+
         Ok(format!(
             "-----BEGIN CERTIFICATE REQUEST-----\n{}\n-----END CERTIFICATE REQUEST-----",
             encoded
@@ -132,15 +132,21 @@ impl CsrProcessor {
 
     fn validate_subject(&self, subject: &CertificateSubject) -> Result<(), AstorError> {
         if subject.common_name.is_empty() {
-            return Err(AstorError::ValidationError("Common name is required".to_string()));
+            return Err(AstorError::ValidationError(
+                "Common name is required".to_string(),
+            ));
         }
 
         if subject.organization.is_empty() {
-            return Err(AstorError::ValidationError("Organization is required".to_string()));
+            return Err(AstorError::ValidationError(
+                "Organization is required".to_string(),
+            ));
         }
 
         if subject.country.len() != 2 {
-            return Err(AstorError::ValidationError("Country must be 2-letter code".to_string()));
+            return Err(AstorError::ValidationError(
+                "Country must be 2-letter code".to_string(),
+            ));
         }
 
         Ok(())
@@ -148,7 +154,9 @@ impl CsrProcessor {
 
     fn validate_public_key(&self, public_key: &[u8]) -> Result<(), AstorError> {
         if public_key.len() != 32 {
-            return Err(AstorError::ValidationError("Invalid public key length".to_string()));
+            return Err(AstorError::ValidationError(
+                "Invalid public key length".to_string(),
+            ));
         }
 
         // Verify it's a valid Ed25519 public key
@@ -175,9 +183,7 @@ pub struct CsrValidationRules {
 
 impl Default for CsrValidationRules {
     fn default() -> Self {
-        Self {
-            rules: vec![],
-        }
+        Self { rules: vec![] }
     }
 }
 

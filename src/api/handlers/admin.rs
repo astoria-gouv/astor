@@ -10,8 +10,8 @@ use std::collections::HashMap;
 
 use crate::{
     admin::{AdminManager, Administrator},
-    central_bank::CentralBank,
     api::{models::*, AppState},
+    central_bank::CentralBank,
     errors::AstorError,
     security::{Role, Signature},
 };
@@ -62,28 +62,48 @@ pub async fn create_admin(
     Json(request): Json<CreateAdminRequest>,
 ) -> Result<Json<AdminResponse>, (StatusCode, Json<ErrorResponse>)> {
     let public_key = ed25519_dalek::PublicKey::from_bytes(
-        &base64::decode(&request.public_key)
-            .map_err(|_| (StatusCode::BAD_REQUEST, Json(ErrorResponse {
-                error: "Invalid public key format".to_string(),
-                message: "Public key must be base64 encoded".to_string(),
-            })))?
-    ).map_err(|_| (StatusCode::BAD_REQUEST, Json(ErrorResponse {
-        error: "Invalid public key".to_string(),
-        message: "Invalid Ed25519 public key".to_string(),
-    })))?;
+        &base64::decode(&request.public_key).map_err(|_| {
+            (
+                StatusCode::BAD_REQUEST,
+                Json(ErrorResponse {
+                    error: "Invalid public key format".to_string(),
+                    message: "Public key must be base64 encoded".to_string(),
+                }),
+            )
+        })?,
+    )
+    .map_err(|_| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse {
+                error: "Invalid public key".to_string(),
+                message: "Invalid Ed25519 public key".to_string(),
+            }),
+        )
+    })?;
 
     let mut admin_manager = state.admin_manager.lock().await;
-    admin_manager.add_admin(request.admin_id.clone(), public_key)
-        .map_err(|e| (StatusCode::BAD_REQUEST, Json(ErrorResponse {
-            error: "Failed to create admin".to_string(),
-            message: e.to_string(),
-        })))?;
+    admin_manager
+        .add_admin(request.admin_id.clone(), public_key)
+        .map_err(|e| {
+            (
+                StatusCode::BAD_REQUEST,
+                Json(ErrorResponse {
+                    error: "Failed to create admin".to_string(),
+                    message: e.to_string(),
+                }),
+            )
+        })?;
 
-    let admin = admin_manager.get_admin(&request.admin_id)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorResponse {
-            error: "Failed to retrieve created admin".to_string(),
-            message: e.to_string(),
-        })))?;
+    let admin = admin_manager.get_admin(&request.admin_id).map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse {
+                error: "Failed to retrieve created admin".to_string(),
+                message: e.to_string(),
+            }),
+        )
+    })?;
 
     Ok(Json(AdminResponse {
         id: admin.id.clone(),
@@ -119,11 +139,15 @@ pub async fn get_admin(
     Path(admin_id): Path<String>,
 ) -> Result<Json<AdminResponse>, (StatusCode, Json<ErrorResponse>)> {
     let admin_manager = state.admin_manager.lock().await;
-    let admin = admin_manager.get_admin(&admin_id)
-        .map_err(|e| (StatusCode::NOT_FOUND, Json(ErrorResponse {
-            error: "Admin not found".to_string(),
-            message: e.to_string(),
-        })))?;
+    let admin = admin_manager.get_admin(&admin_id).map_err(|e| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse {
+                error: "Admin not found".to_string(),
+                message: e.to_string(),
+            }),
+        )
+    })?;
 
     Ok(Json(AdminResponse {
         id: admin.id.clone(),
@@ -140,10 +164,14 @@ pub async fn update_admin(
     Json(request): Json<UpdateAdminRequest>,
 ) -> Result<Json<AdminResponse>, (StatusCode, Json<ErrorResponse>)> {
     // For now, return method not implemented
-    Err((StatusCode::NOT_IMPLEMENTED, Json(ErrorResponse {
-        error: "Update admin not implemented".to_string(),
-        message: "Admin update functionality needs to be implemented in AdminManager".to_string(),
-    })))
+    Err((
+        StatusCode::NOT_IMPLEMENTED,
+        Json(ErrorResponse {
+            error: "Update admin not implemented".to_string(),
+            message: "Admin update functionality needs to be implemented in AdminManager"
+                .to_string(),
+        }),
+    ))
 }
 
 /// Deactivate administrator
@@ -152,10 +180,14 @@ pub async fn deactivate_admin(
     Path(admin_id): Path<String>,
 ) -> Result<Json<AdminResponse>, (StatusCode, Json<ErrorResponse>)> {
     // For now, return method not implemented
-    Err((StatusCode::NOT_IMPLEMENTED, Json(ErrorResponse {
-        error: "Deactivate admin not implemented".to_string(),
-        message: "Admin deactivation functionality needs to be implemented in AdminManager".to_string(),
-    })))
+    Err((
+        StatusCode::NOT_IMPLEMENTED,
+        Json(ErrorResponse {
+            error: "Deactivate admin not implemented".to_string(),
+            message: "Admin deactivation functionality needs to be implemented in AdminManager"
+                .to_string(),
+        }),
+    ))
 }
 
 /// Get system statistics

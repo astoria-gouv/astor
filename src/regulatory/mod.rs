@@ -1,13 +1,13 @@
 //! Enhanced regulatory compliance for fiat currency operations
 
-pub mod kyc;
-pub mod aml;
-pub mod tax_reporting;
-pub mod international_compliance;
+// pub mod kyc;
+// pub mod aml;
+// pub mod tax_reporting;
+// pub mod international_compliance;
 
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use chrono::{DateTime, Utc};
 
 use crate::errors::AstorError;
 
@@ -162,7 +162,7 @@ impl RegulatoryCompliance {
         verification_level: KycLevel,
     ) -> Result<(), AstorError> {
         let risk_rating = self.assess_customer_risk(&customer_id, &documents)?;
-        
+
         let verification = KycVerification {
             customer_id: customer_id.clone(),
             verification_level,
@@ -184,7 +184,8 @@ impl RegulatoryCompliance {
         transaction_pattern: &str,
     ) -> Result<Option<String>, AstorError> {
         // Check for high-value transactions
-        if transaction_amount > 10000 { // $10,000 threshold
+        if transaction_amount > 10000 {
+            // $10,000 threshold
             let alert = AmlAlert {
                 alert_id: uuid::Uuid::new_v4().to_string(),
                 customer_id: customer_id.to_string(),
@@ -195,7 +196,7 @@ impl RegulatoryCompliance {
                 status: AlertStatus::Open,
                 assigned_to: None,
             };
-            
+
             let alert_id = alert.alert_id.clone();
             self.aml_alerts.push(alert);
             return Ok(Some(alert_id));
@@ -213,7 +214,7 @@ impl RegulatoryCompliance {
                 status: AlertStatus::Open,
                 assigned_to: None,
             };
-            
+
             let alert_id = alert.alert_id.clone();
             self.aml_alerts.push(alert);
             return Ok(Some(alert_id));
@@ -248,10 +249,14 @@ impl RegulatoryCompliance {
     }
 
     /// Assess customer risk rating
-    fn assess_customer_risk(&self, _customer_id: &str, documents: &[IdentityDocument]) -> Result<RiskRating, AstorError> {
+    fn assess_customer_risk(
+        &self,
+        _customer_id: &str,
+        documents: &[IdentityDocument],
+    ) -> Result<RiskRating, AstorError> {
         // Simple risk assessment based on document verification
         let verified_docs = documents.iter().filter(|d| d.verified).count();
-        
+
         if verified_docs >= 2 {
             Ok(RiskRating::Low)
         } else if verified_docs == 1 {

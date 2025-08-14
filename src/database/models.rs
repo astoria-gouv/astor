@@ -1,9 +1,9 @@
 //! Database models and schemas
 
-use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
-use uuid::Uuid;
+use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
+use uuid::Uuid;
 
 /// Database model for accounts
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]

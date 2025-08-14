@@ -1,7 +1,7 @@
 //! API route definitions
 
 use axum::{
-    routing::{get, post, put, delete},
+    routing::{delete, get, post, put},
     Router,
 };
 
@@ -35,7 +35,10 @@ fn account_routes() -> Router<AppState> {
         .route("/:id/balance", get(handlers::accounts::get_balance))
         .route("/:id/freeze", put(handlers::accounts::freeze_account))
         .route("/:id/unfreeze", put(handlers::accounts::unfreeze_account))
-        .route("/:id/transactions", get(handlers::accounts::get_account_transactions))
+        .route(
+            "/:id/transactions",
+            get(handlers::accounts::get_account_transactions),
+        )
 }
 
 /// Transaction routes
@@ -44,7 +47,10 @@ fn transaction_routes() -> Router<AppState> {
         .route("/", post(handlers::transactions::create_transaction))
         .route("/", get(handlers::transactions::list_transactions))
         .route("/:id", get(handlers::transactions::get_transaction))
-        .route("/:id/status", put(handlers::transactions::update_transaction_status))
+        .route(
+            "/:id/status",
+            put(handlers::transactions::update_transaction_status),
+        )
         .route("/transfer", post(handlers::transactions::transfer))
         .route("/issue", post(handlers::transactions::issue_currency))
 }

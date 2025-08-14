@@ -2,13 +2,13 @@
 //! Provides real-time insights and business intelligence
 
 use crate::errors::AstorResult;
+use chrono::{DateTime, Duration, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use chrono::{DateTime, Utc, Duration};
 
-pub mod metrics;
-pub mod reports;
-pub mod ml_models;
+// pub mod metrics;
+// pub mod reports;
+// pub mod ml_models;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AnalyticsEngine {
@@ -70,30 +70,34 @@ impl AnalyticsEngine {
         }
     }
 
-    pub async fn generate_report(&self, report_type: ReportType, period: TimePeriod) -> AstorResult<AnalyticsReport> {
+    pub async fn generate_report(
+        &self,
+        report_type: ReportType,
+        period: TimePeriod,
+    ) -> AstorResult<AnalyticsReport> {
         let report_id = uuid::Uuid::new_v4().to_string();
-        
+
         let (data, insights) = match report_type {
             ReportType::TransactionVolume => {
                 let data = self.transaction_metrics.get_volume_data(&period).await?;
                 let insights = self.analyze_transaction_patterns(&data).await?;
                 (data, insights)
-            },
+            }
             ReportType::UserGrowth => {
                 let data = self.user_analytics.get_growth_data(&period).await?;
                 let insights = self.analyze_user_trends(&data).await?;
                 (data, insights)
-            },
+            }
             ReportType::NetworkPerformance => {
                 let data = self.network_health.get_performance_data(&period).await?;
                 let insights = self.analyze_network_health(&data).await?;
                 (data, insights)
-            },
+            }
             ReportType::PredictiveAnalysis => {
                 let data = self.ml_predictor.generate_predictions(&period).await?;
                 let insights = self.analyze_predictions(&data).await?;
                 (data, insights)
-            },
+            }
             _ => {
                 let data = serde_json::json!({"message": "Report type not implemented"});
                 let insights = vec![];
@@ -111,15 +115,21 @@ impl AnalyticsEngine {
         })
     }
 
-    async fn analyze_transaction_patterns(&self, data: &serde_json::Value) -> AstorResult<Vec<Insight>> {
+    async fn analyze_transaction_patterns(
+        &self,
+        data: &serde_json::Value,
+    ) -> AstorResult<Vec<Insight>> {
         let mut insights = Vec::new();
-        
+
         // Analyze transaction volume trends
         if let Some(volume_trend) = data.get("volume_trend").and_then(|v| v.as_f64()) {
             if volume_trend > 0.2 {
                 insights.push(Insight {
                     category: "Transaction Volume".to_string(),
-                    message: format!("Transaction volume increased by {:.1}% this period", volume_trend * 100.0),
+                    message: format!(
+                        "Transaction volume increased by {:.1}% this period",
+                        volume_trend * 100.0
+                    ),
                     severity: InsightSeverity::Info,
                     confidence: 0.95,
                     recommendations: vec![
@@ -130,7 +140,10 @@ impl AnalyticsEngine {
             } else if volume_trend < -0.1 {
                 insights.push(Insight {
                     category: "Transaction Volume".to_string(),
-                    message: format!("Transaction volume decreased by {:.1}% this period", volume_trend.abs() * 100.0),
+                    message: format!(
+                        "Transaction volume decreased by {:.1}% this period",
+                        volume_trend.abs() * 100.0
+                    ),
                     severity: InsightSeverity::Warning,
                     confidence: 0.88,
                     recommendations: vec![
@@ -146,7 +159,7 @@ impl AnalyticsEngine {
 
     async fn analyze_user_trends(&self, data: &serde_json::Value) -> AstorResult<Vec<Insight>> {
         let mut insights = Vec::new();
-        
+
         if let Some(growth_rate) = data.get("growth_rate").and_then(|v| v.as_f64()) {
             if growth_rate > 0.15 {
                 insights.push(Insight {
@@ -167,7 +180,7 @@ impl AnalyticsEngine {
 
     async fn analyze_network_health(&self, data: &serde_json::Value) -> AstorResult<Vec<Insight>> {
         let mut insights = Vec::new();
-        
+
         if let Some(latency) = data.get("avg_latency_ms").and_then(|v| v.as_f64()) {
             if latency > 1000.0 {
                 insights.push(Insight {
@@ -189,7 +202,7 @@ impl AnalyticsEngine {
 
     async fn analyze_predictions(&self, data: &serde_json::Value) -> AstorResult<Vec<Insight>> {
         let mut insights = Vec::new();
-        
+
         if let Some(predictions) = data.get("predictions").and_then(|v| v.as_array()) {
             for prediction in predictions {
                 if let Some(confidence) = prediction.get("confidence").and_then(|v| v.as_f64()) {
@@ -217,7 +230,7 @@ impl AnalyticsEngine {
     pub async fn get_real_time_dashboard(&self) -> AstorResult<serde_json::Value> {
         let current_time = Utc::now();
         let last_hour = current_time - Duration::hours(1);
-        
+
         let period = TimePeriod {
             start: last_hour,
             end: current_time,

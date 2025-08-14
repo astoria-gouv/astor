@@ -1,10 +1,10 @@
 //! Session management for secure user sessions
 
+use chrono::{DateTime, Duration, Utc};
+use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use uuid::Uuid;
-use chrono::{DateTime, Utc, Duration};
-use jsonwebtoken::{encode, decode, Header, Algorithm, EncodingKey, DecodingKey, Validation};
 
 use crate::errors::AstorError;
 use crate::security::auth::Role;
@@ -74,15 +74,15 @@ impl Session {
 /// JWT Claims structure
 #[derive(Debug, Serialize, Deserialize)]
 pub struct JwtClaims {
-    pub sub: Uuid,           // Subject (user ID)
-    pub session_id: Uuid,    // Session ID
-    pub role: String,        // User role
-    pub exp: i64,            // Expiration time
-    pub iat: i64,            // Issued at
-    pub nbf: i64,            // Not before
-    pub iss: String,         // Issuer
-    pub aud: String,         // Audience
-    pub mfa_verified: bool,  // MFA verification status
+    pub sub: Uuid,          // Subject (user ID)
+    pub session_id: Uuid,   // Session ID
+    pub role: String,       // User role
+    pub exp: i64,           // Expiration time
+    pub iat: i64,           // Issued at
+    pub nbf: i64,           // Not before
+    pub iss: String,        // Issuer
+    pub aud: String,        // Audience
+    pub mfa_verified: bool, // MFA verification status
 }
 
 /// Session manager for handling user sessions
@@ -98,7 +98,8 @@ impl SessionManager {
     pub fn new(session_timeout: i64) -> Self {
         Self {
             sessions: HashMap::new(),
-            jwt_secret: std::env::var("JWT_SECRET").unwrap_or_else(|_| "default_secret".to_string()),
+            jwt_secret: std::env::var("JWT_SECRET")
+                .unwrap_or_else(|_| "default_secret".to_string()),
             session_timeout,
             max_sessions_per_user: 5,
         }
@@ -139,8 +140,9 @@ impl SessionManager {
     /// Validate JWT token and return session
     pub fn validate_token(&mut self, token: &str) -> Result<Session, AstorError> {
         let claims = self.decode_jwt_token(token)?;
-        
-        let session = self.sessions
+
+        let session = self
+            .sessions
             .get_mut(&claims.session_id)
             .ok_or(AstorError::Unauthorized("Session not found".to_string()))?;
 
@@ -164,7 +166,8 @@ impl SessionManager {
         self.cleanup_expired_sessions();
 
         // Check if user has any valid sessions
-        let has_valid_session = self.sessions
+        let has_valid_session = self
+            .sessions
             .values()
             .any(|session| session.user_id == user_uuid && session.is_valid());
 
@@ -182,7 +185,8 @@ impl SessionManager {
 
     /// Invalidate all sessions for a user
     pub fn invalidate_user_sessions(&mut self, user_id: Uuid) -> Result<(), AstorError> {
-        let session_ids: Vec<Uuid> = self.sessions
+        let session_ids: Vec<Uuid> = self
+            .sessions
             .iter()
             .filter(|(_, session)| session.user_id == user_id)
             .map(|(id, _)| *id)
@@ -243,7 +247,8 @@ impl SessionManager {
 
     /// Clean up expired sessions
     fn cleanup_expired_sessions(&mut self) {
-        let expired_sessions: Vec<Uuid> = self.sessions
+        let expired_sessions: Vec<Uuid> = self
+            .sessions
             .iter()
             .filter(|(_, session)| !session.is_valid())
             .map(|(id, _)| *id)
@@ -256,7 +261,8 @@ impl SessionManager {
 
     /// Enforce maximum sessions per user
     fn enforce_session_limit(&mut self, user_id: Uuid) {
-        let mut user_sessions: Vec<(Uuid, DateTime<Utc>)> = self.sessions
+        let mut user_sessions: Vec<(Uuid, DateTime<Utc>)> = self
+            .sessions
             .iter()
             .filter(|(_, session)| session.user_id == user_id && session.is_valid())
             .map(|(id, session)| (*id, session.created_at))
@@ -265,7 +271,7 @@ impl SessionManager {
         if user_sessions.len() >= self.max_sessions_per_user {
             // Sort by creation time (oldest first)
             user_sessions.sort_by(|a, b| a.1.cmp(&b.1));
-            
+
             // Remove oldest sessions
             let sessions_to_remove = user_sessions.len() - self.max_sessions_per_user + 1;
             for i in 0..sessions_to_remove {
@@ -305,14 +311,14 @@ mod tests {
         let mut manager = SessionManager::new(60);
         let user_id = Uuid::new_v4();
         let role = Role::User;
-        
+
         let result = manager.create_session(
             user_id,
             role,
             "127.0.0.1".to_string(),
             Some("test-agent".to_string()),
         );
-        
+
         assert!(result.is_ok());
         let (token, session) = result.unwrap();
         assert!(!token.is_empty());
@@ -324,14 +330,11 @@ mod tests {
     fn test_session_validation() {
         let mut manager = SessionManager::new(60);
         let user_id = Uuid::new_v4();
-        
-        let (token, _) = manager.create_session(
-            user_id,
-            Role::User,
-            "127.0.0.1".to_string(),
-            None,
-        ).unwrap();
-        
+
+        let (token, _) = manager
+            .create_session(user_id, Role::User, "127.0.0.1".to_string(), None)
+            .unwrap();
+
         let validation_result = manager.validate_token(&token);
         assert!(validation_result.is_ok());
     }
@@ -345,7 +348,7 @@ mod tests {
             None,
             -1, // Expired 1 minute ago
         );
-        
+
         assert!(!session.is_valid());
     }
 }

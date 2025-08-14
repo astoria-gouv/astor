@@ -1,11 +1,11 @@
 //! Secure ledger system for recording all transactions
 
-use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-use crate::security::hash_data;
 use crate::errors::AstorError;
+use crate::security::hash_data;
 
 /// Ledger entry for recording transactions
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -75,14 +75,20 @@ impl Ledger {
         };
 
         self.add_entry(entry_type)?;
-        
+
         // Update total supply
-        self.total_supply = self.total_supply.checked_add(amount)
+        self.total_supply = self
+            .total_supply
+            .checked_add(amount)
             .ok_or_else(|| AstorError::LedgerError("Total supply overflow".to_string()))?;
 
         // Update recipient balance
-        let balance = self.account_balances.entry(recipient.to_string()).or_insert(0);
-        *balance = balance.checked_add(amount)
+        let balance = self
+            .account_balances
+            .entry(recipient.to_string())
+            .or_insert(0);
+        *balance = balance
+            .checked_add(amount)
             .ok_or_else(|| AstorError::LedgerError("Account balance overflow".to_string()))?;
 
         Ok(())
@@ -108,12 +114,15 @@ impl Ledger {
         // Update balances
         let from_balance = self.account_balances.entry(from.to_string()).or_insert(0);
         if *from_balance < amount {
-            return Err(AstorError::LedgerError("Insufficient balance in ledger".to_string()));
+            return Err(AstorError::LedgerError(
+                "Insufficient balance in ledger".to_string(),
+            ));
         }
         *from_balance -= amount;
 
         let to_balance = self.account_balances.entry(to.to_string()).or_insert(0);
-        *to_balance = to_balance.checked_add(amount)
+        *to_balance = to_balance
+            .checked_add(amount)
             .ok_or_else(|| AstorError::LedgerError("Account balance overflow".to_string()))?;
 
         Ok(())
@@ -145,7 +154,7 @@ impl Ledger {
         let entry_id = uuid::Uuid::new_v4().to_string();
         let timestamp = Utc::now();
         let previous_hash = self.get_last_hash();
-        
+
         // Calculate hash for this entry
         let entry_data = format!("{}{:?}{}", entry_id, entry_type, timestamp);
         let hash = hash_data(format!("{}{}", previous_hash, entry_data).as_bytes());
@@ -189,8 +198,9 @@ impl Ledger {
 
             // Verify entry hash
             let entry_data = format!("{}{:?}{}", entry.id, entry.entry_type, entry.timestamp);
-            let expected_hash = hash_data(format!("{}{}", entry.previous_hash, entry_data).as_bytes());
-            
+            let expected_hash =
+                hash_data(format!("{}{}", entry.previous_hash, entry_data).as_bytes());
+
             if entry.hash != expected_hash {
                 return Ok(false);
             }

@@ -1,23 +1,23 @@
 //! REST API layer for the Astor currency system
 
+pub mod auth;
 pub mod handlers;
 pub mod middleware;
 pub mod models;
 pub mod routes;
-pub mod auth;
 
 use axum::{
-    http::{StatusCode, Method},
+    http::{Method, StatusCode},
     response::Json,
     Router,
 };
 use serde_json::{json, Value};
+use std::time::Duration;
 use tower::ServiceBuilder;
 use tower_http::{
     cors::{Any, CorsLayer},
     trace::TraceLayer,
 };
-use std::time::Duration;
 
 use crate::config::Config;
 use crate::database::Database;
@@ -44,8 +44,13 @@ pub fn create_router(state: AppState) -> Router {
             ServiceBuilder::new()
                 .layer(TraceLayer::new_for_http())
                 .layer(cors)
-                .layer(middleware::timeout::TimeoutLayer::new(Duration::from_secs(30)))
-                .layer(middleware::rate_limit::RateLimitLayer::new(100, Duration::from_secs(60)))
+                .layer(middleware::timeout::TimeoutLayer::new(Duration::from_secs(
+                    30,
+                )))
+                .layer(middleware::rate_limit::RateLimitLayer::new(
+                    100,
+                    Duration::from_secs(60),
+                )),
         )
         .with_state(state)
 }

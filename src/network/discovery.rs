@@ -1,12 +1,12 @@
 //! Peer discovery and network topology management
 
+use super::NodeConfig;
 use crate::errors::AstorError;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use super::NodeConfig;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PeerInfo {
@@ -40,10 +40,10 @@ impl PeerDiscovery {
     pub async fn start(&mut self) -> Result<(), AstorError> {
         // Connect to bootstrap peers
         self.connect_to_bootstrap_peers().await?;
-        
+
         // Start periodic peer discovery
         self.start_discovery_loop().await?;
-        
+
         Ok(())
     }
 
@@ -64,12 +64,12 @@ impl PeerDiscovery {
     async fn start_discovery_loop(&self) -> Result<(), AstorError> {
         let known_peers = self.known_peers.clone();
         let discovery_interval = self.discovery_interval;
-        
+
         tokio::spawn(async move {
             let mut interval = tokio::time::interval(discovery_interval);
             loop {
                 interval.tick().await;
-                
+
                 // Perform peer discovery
                 let peers = known_peers.read().await;
                 for (peer_id, peer_info) in peers.iter() {
@@ -79,7 +79,7 @@ impl PeerDiscovery {
                 }
             }
         });
-        
+
         Ok(())
     }
 
@@ -99,31 +99,35 @@ impl PeerDiscovery {
                     reputation: 100,
                     capabilities: vec!["consensus".to_string(), "sync".to_string()],
                 };
-                
+
                 self.add_peer(peer_info).await?;
             }
             Err(e) => {
-                return Err(AstorError::NetworkError(format!("Failed to connect to peer: {}", e)));
+                return Err(AstorError::NetworkError(format!(
+                    "Failed to connect to peer: {}",
+                    e
+                )));
             }
         }
-        
+
         Ok(())
     }
 
     pub async fn add_peer(&self, peer_info: PeerInfo) -> Result<(), AstorError> {
         let mut peers = self.known_peers.write().await;
-        
+
         // Check if we've reached max peers
         if peers.len() >= self.max_peers {
             // Remove lowest reputation peer
-            if let Some((lowest_id, _)) = peers.iter()
+            if let Some((lowest_id, _)) = peers
+                .iter()
                 .min_by_key(|(_, info)| info.reputation)
                 .map(|(id, info)| (id.clone(), info.clone()))
             {
                 peers.remove(&lowest_id);
             }
         }
-        
+
         peers.insert(peer_info.id.clone(), peer_info);
         Ok(())
     }
@@ -147,10 +151,10 @@ impl PeerDiscovery {
     pub async fn get_best_peers(&self, count: usize) -> Vec<PeerInfo> {
         let peers = self.known_peers.read().await;
         let mut peer_list: Vec<_> = peers.values().cloned().collect();
-        
+
         // Sort by reputation (highest first)
         peer_list.sort_by(|a, b| b.reputation.cmp(&a.reputation));
-        
+
         peer_list.into_iter().take(count).collect()
     }
 
@@ -159,7 +163,11 @@ impl PeerDiscovery {
         0 // In real implementation, would use atomic counter
     }
 
-    pub async fn update_peer_reputation(&self, peer_id: &str, delta: i32) -> Result<(), AstorError> {
+    pub async fn update_peer_reputation(
+        &self,
+        peer_id: &str,
+        delta: i32,
+    ) -> Result<(), AstorError> {
         let mut peers = self.known_peers.write().await;
         if let Some(peer) = peers.get_mut(peer_id) {
             peer.reputation = (peer.reputation + delta).max(0).min(1000);
@@ -177,23 +185,27 @@ impl PeerDiscovery {
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
             .as_secs();
-        
+
         // Remove peers not seen in the last hour
         peers.retain(|_, peer| current_time - peer.last_seen < 3600);
-        
+
         Ok(())
     }
 
-    pub async fn broadcast_peer_discovery(&self, requesting_peer: &str) -> Result<Vec<PeerInfo>, AstorError> {
+    pub async fn broadcast_peer_discovery(
+        &self,
+        requesting_peer: &str,
+    ) -> Result<Vec<PeerInfo>, AstorError> {
         let peers = self.known_peers.read().await;
-        
+
         // Return a subset of known peers (excluding the requesting peer)
-        let peer_list: Vec<_> = peers.values()
+        let peer_list: Vec<_> = peers
+            .values()
             .filter(|peer| peer.id != requesting_peer)
             .take(20) // Limit to 20 peers per response
             .cloned()
             .collect();
-        
+
         Ok(peer_list)
     }
 }

@@ -1,7 +1,7 @@
 //! Astor Virtual Machine for Smart Contract Execution
 
-use crate::errors::{AstorResult, AstorError};
 use super::SmartContract;
+use crate::errors::{AstorError, AstorResult};
 use serde_json::Value;
 use std::collections::HashMap;
 
@@ -33,18 +33,27 @@ impl AstorVM {
         self.memory.clear();
 
         // Load function from ABI
-        let function = contract.abi.functions.iter()
+        let function = contract
+            .abi
+            .functions
+            .iter()
             .find(|f| f.name == function_name)
             .ok_or_else(|| AstorError::InvalidInput("Function not found".to_string()))?;
 
         // Validate arguments
         if args.len() != function.inputs.len() {
-            return Err(AstorError::InvalidInput("Argument count mismatch".to_string()));
+            return Err(AstorError::InvalidInput(
+                "Argument count mismatch".to_string(),
+            ));
         }
 
         // Set up execution context
-        self.memory.insert("caller".to_string(), Value::String(caller));
-        self.memory.insert("contract_id".to_string(), Value::String(contract.id.to_string()));
+        self.memory
+            .insert("caller".to_string(), Value::String(caller));
+        self.memory.insert(
+            "contract_id".to_string(),
+            Value::String(contract.id.to_string()),
+        );
 
         // Load arguments into memory
         for (i, arg) in args.iter().enumerate() {
@@ -105,21 +114,24 @@ impl AstorVM {
     fn op_add(&mut self) -> AstorResult<()> {
         let b = self.pop_number()?;
         let a = self.pop_number()?;
-        self.stack.push(Value::Number(serde_json::Number::from(a + b)));
+        self.stack
+            .push(Value::Number(serde_json::Number::from(a + b)));
         Ok(())
     }
 
     fn op_sub(&mut self) -> AstorResult<()> {
         let b = self.pop_number()?;
         let a = self.pop_number()?;
-        self.stack.push(Value::Number(serde_json::Number::from(a - b)));
+        self.stack
+            .push(Value::Number(serde_json::Number::from(a - b)));
         Ok(())
     }
 
     fn op_mul(&mut self) -> AstorResult<()> {
         let b = self.pop_number()?;
         let a = self.pop_number()?;
-        self.stack.push(Value::Number(serde_json::Number::from(a * b)));
+        self.stack
+            .push(Value::Number(serde_json::Number::from(a * b)));
         Ok(())
     }
 
@@ -129,17 +141,21 @@ impl AstorVM {
         if b == 0 {
             return Err(AstorError::InvalidInput("Division by zero".to_string()));
         }
-        self.stack.push(Value::Number(serde_json::Number::from(a / b)));
+        self.stack
+            .push(Value::Number(serde_json::Number::from(a / b)));
         Ok(())
     }
 
     fn op_push(&mut self, bytecode: &[u8], pc: &mut usize) -> AstorResult<()> {
         *pc += 1;
         if *pc >= bytecode.len() {
-            return Err(AstorError::InvalidInput("Unexpected end of bytecode".to_string()));
+            return Err(AstorError::InvalidInput(
+                "Unexpected end of bytecode".to_string(),
+            ));
         }
         let value = bytecode[*pc] as i64;
-        self.stack.push(Value::Number(serde_json::Number::from(value)));
+        self.stack
+            .push(Value::Number(serde_json::Number::from(value)));
         Ok(())
     }
 
@@ -151,7 +167,10 @@ impl AstorVM {
     }
 
     fn op_store(&mut self) -> AstorResult<()> {
-        let value = self.stack.pop().ok_or_else(|| AstorError::InvalidInput("Stack underflow".to_string()))?;
+        let value = self
+            .stack
+            .pop()
+            .ok_or_else(|| AstorError::InvalidInput("Stack underflow".to_string()))?;
         let key = self.pop_string()?;
         self.memory.insert(key, value);
         Ok(())
@@ -181,15 +200,23 @@ impl AstorVM {
     }
 
     fn pop_number(&mut self) -> AstorResult<i64> {
-        let value = self.stack.pop().ok_or_else(|| AstorError::InvalidInput("Stack underflow".to_string()))?;
+        let value = self
+            .stack
+            .pop()
+            .ok_or_else(|| AstorError::InvalidInput("Stack underflow".to_string()))?;
         match value {
-            Value::Number(n) => n.as_i64().ok_or_else(|| AstorError::InvalidInput("Invalid number".to_string())),
+            Value::Number(n) => n
+                .as_i64()
+                .ok_or_else(|| AstorError::InvalidInput("Invalid number".to_string())),
             _ => Err(AstorError::InvalidInput("Expected number".to_string())),
         }
     }
 
     fn pop_string(&mut self) -> AstorResult<String> {
-        let value = self.stack.pop().ok_or_else(|| AstorError::InvalidInput("Stack underflow".to_string()))?;
+        let value = self
+            .stack
+            .pop()
+            .ok_or_else(|| AstorError::InvalidInput("Stack underflow".to_string()))?;
         match value {
             Value::String(s) => Ok(s),
             _ => Err(AstorError::InvalidInput("Expected string".to_string())),

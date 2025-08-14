@@ -1,8 +1,8 @@
 //! Comprehensive configuration management system
 
-pub mod environment;
+// pub mod environment;
 pub mod secrets;
-pub mod validation;
+// pub mod validation;
 pub mod feature_flags;
 
 use serde::{Deserialize, Serialize};
@@ -336,7 +336,7 @@ impl Config {
     /// Load configuration from environment and files
     pub fn load() -> Result<Self, AstorError> {
         let environment = Environment::from_string(
-            &env::var("ASTOR_ENVIRONMENT").unwrap_or_else(|_| "development".to_string())
+            &env::var("ASTOR_ENVIRONMENT").unwrap_or_else(|_| "development".to_string()),
         );
 
         let mut builder = config::Config::builder();
@@ -360,14 +360,16 @@ impl Config {
         builder = builder.add_source(
             config::Environment::with_prefix("ASTOR")
                 .separator("__")
-                .try_parsing(true)
+                .try_parsing(true),
         );
 
-        let settings = builder.build()
-            .map_err(|e| AstorError::ConfigurationError(format!("Failed to build config: {}", e)))?;
+        let settings = builder.build().map_err(|e| {
+            AstorError::ConfigurationError(format!("Failed to build config: {}", e))
+        })?;
 
-        let mut config: Config = settings.try_deserialize()
-            .map_err(|e| AstorError::ConfigurationError(format!("Failed to deserialize config: {}", e)))?;
+        let mut config: Config = settings.try_deserialize().map_err(|e| {
+            AstorError::ConfigurationError(format!("Failed to deserialize config: {}", e))
+        })?;
 
         config.environment = environment;
 
@@ -381,34 +383,48 @@ impl Config {
     pub fn validate(&self) -> Result<(), AstorError> {
         // Database validation
         if self.database.url.is_empty() {
-            return Err(AstorError::ConfigurationError("Database URL is required".to_string()));
+            return Err(AstorError::ConfigurationError(
+                "Database URL is required".to_string(),
+            ));
         }
 
         if self.database.max_connections == 0 {
-            return Err(AstorError::ConfigurationError("Max connections must be > 0".to_string()));
+            return Err(AstorError::ConfigurationError(
+                "Max connections must be > 0".to_string(),
+            ));
         }
 
         // Security validation
         if self.security.jwt_secret.len() < 32 {
-            return Err(AstorError::ConfigurationError("JWT secret must be at least 32 characters".to_string()));
+            return Err(AstorError::ConfigurationError(
+                "JWT secret must be at least 32 characters".to_string(),
+            ));
         }
 
         if self.security.encryption_key.len() < 32 {
-            return Err(AstorError::ConfigurationError("Encryption key must be at least 32 characters".to_string()));
+            return Err(AstorError::ConfigurationError(
+                "Encryption key must be at least 32 characters".to_string(),
+            ));
         }
 
         // Production-specific validations
         if self.environment.is_production() {
             if self.security.jwt_secret == "default_secret" {
-                return Err(AstorError::ConfigurationError("Default JWT secret not allowed in production".to_string()));
+                return Err(AstorError::ConfigurationError(
+                    "Default JWT secret not allowed in production".to_string(),
+                ));
             }
 
             if !self.server.tls.is_some() {
-                return Err(AstorError::ConfigurationError("TLS is required in production".to_string()));
+                return Err(AstorError::ConfigurationError(
+                    "TLS is required in production".to_string(),
+                ));
             }
 
             if !self.compliance.encryption_at_rest {
-                return Err(AstorError::ConfigurationError("Encryption at rest is required in production".to_string()));
+                return Err(AstorError::ConfigurationError(
+                    "Encryption at rest is required in production".to_string(),
+                ));
             }
         }
 
@@ -426,7 +442,11 @@ impl Config {
 
     /// Check if feature is enabled
     pub fn is_feature_enabled(&self, feature: &str) -> bool {
-        self.feature_flags.flags.get(feature).copied().unwrap_or(false)
+        self.feature_flags
+            .flags
+            .get(feature)
+            .copied()
+            .unwrap_or(false)
     }
 
     /// Get environment-specific settings
@@ -442,7 +462,7 @@ impl Config {
     /// Export configuration as JSON (with secrets redacted)
     pub fn to_json_redacted(&self) -> Result<String, AstorError> {
         let mut config = self.clone();
-        
+
         // Redact sensitive information
         config.security.jwt_secret = "[REDACTED]".to_string();
         config.security.encryption_key = "[REDACTED]".to_string();
@@ -453,8 +473,9 @@ impl Config {
             banking.api_key = "[REDACTED]".to_string();
         }
 
-        serde_json::to_string_pretty(&config)
-            .map_err(|e| AstorError::ConfigurationError(format!("Failed to serialize config: {}", e)))
+        serde_json::to_string_pretty(&config).map_err(|e| {
+            AstorError::ConfigurationError(format!("Failed to serialize config: {}", e))
+        })
     }
 
     /// Redact sensitive parts of connection strings
@@ -561,7 +582,7 @@ impl Default for SecurityConfig {
     fn default() -> Self {
         Self {
             jwt_secret: "development_secret_change_in_production".to_string(),
-            jwt_expiration: 86400, // 24 hours
+            jwt_expiration: 86400,            // 24 hours
             refresh_token_expiration: 604800, // 7 days
             bcrypt_cost: 12,
             max_login_attempts: 5,
@@ -694,11 +715,11 @@ impl Default for AlertsConfig {
 impl Default for AlertThresholds {
     fn default() -> Self {
         Self {
-            error_rate: 0.05, // 5%
+            error_rate: 0.05,        // 5%
             response_time_p99: 1000, // 1 second
-            memory_usage: 0.8, // 80%
-            cpu_usage: 0.8, // 80%
-            disk_usage: 0.9, // 90%
+            memory_usage: 0.8,       // 80%
+            cpu_usage: 0.8,          // 80%
+            disk_usage: 0.9,         // 90%
         }
     }
 }
