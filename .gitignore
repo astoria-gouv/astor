@@ -31,3 +31,11 @@ rustfmt.toml
 
 # Ignorer les fichiers générés par ccache
 .ccache/
+
+# Environment variables 
+.env
+# Ignore les fichiers de configuration de l'environnement
+.env.local
+.env.development
+.env.test
+.env.production 

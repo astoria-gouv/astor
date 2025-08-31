@@ -33,21 +33,21 @@ The system is built with a modular architecture:
 
 ### Installation
 
-\`\`\`bash
+```bash
 # Clone the repository
-git clone <repository-url>
-cd astor-currency
+git clone https://github.com/astoria-gouv/astor
+cd astor
 
 # Build the project
 cargo build --release
 
 # Run tests
 cargo test
-\`\`\`
+```
 
 ### Basic Usage
 
-\`\`\`bash
+```bash
 # Initialize the system
 cargo run -- init
 
@@ -65,7 +65,7 @@ cargo run -- verify-ledger
 
 # Show system statistics
 cargo run -- stats
-\`\`\`
+```
 
 ## Security Features
 
@@ -110,7 +110,7 @@ The `conversion.rs` module provides placeholders for:
 
 Run the comprehensive test suite:
 
-\`\`\`bash
+```bash
 # Run all tests
 cargo test
 
@@ -119,7 +119,7 @@ cargo test -- --nocapture
 
 # Run specific test
 cargo test test_currency_issuance
-\`\`\`
+```
 
 ## Contributing
 
@@ -129,10 +129,10 @@ cargo test test_currency_issuance
 4. Ensure all tests pass
 5. Submit a pull request
 
-## License
-
-This project is provided as-is for educational and development purposes. Ensure compliance with local financial regulations before any production use.
-
 ## Disclaimer
 
 This is a foundational codebase for development and testing purposes only. It is not intended for production use without significant additional security, compliance, and infrastructure considerations.
+
+## License
+
+This project is provided as-is for educational and development purposes. Ensure compliance with local financial regulations before any production use.

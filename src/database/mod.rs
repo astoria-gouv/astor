@@ -1,7 +1,7 @@
 //! Database layer for persistent storage
 
 pub mod models;
-// pub mod migrations;
+pub mod migrations;
 pub mod repositories;
 
 use crate::errors::AstorError;
